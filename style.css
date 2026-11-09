@@ -22,7 +22,9 @@
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light dark;
+  --stage-bg: #000;
+  --scrim-crop: rgba(0, 0, 0, .6);
 
   /* ---- Màu (M3 dark, hạt giống xanh dương) ---- */
   --md-sys-color-primary: #a8c7fa;
@@ -94,6 +96,54 @@ html, body {
 }
 body { font-size: 14px; letter-spacing: .1px; }
 :focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-offset: 2px; }
+
+/* ---- Chế độ sáng: đồng bộ với hệ thống ---- */
+@media (prefers-color-scheme: light) {
+  :root {
+    --stage-bg: #e8ecf4;
+    --scrim-crop: rgba(20, 24, 33, .55);
+    --md-sys-color-primary: #0b57d0;
+    --md-sys-color-on-primary: #ffffff;
+    --md-sys-color-primary-container: #d3e3fd;
+    --md-sys-color-on-primary-container: #041e49;
+    --md-sys-color-secondary: #575e71;
+    --md-sys-color-on-secondary: #ffffff;
+    --md-sys-color-secondary-container: #dae2f9;
+    --md-sys-color-on-secondary-container: #131c2b;
+    --md-sys-color-tertiary: #715573;
+    --md-sys-color-on-tertiary: #ffffff;
+    --md-sys-color-tertiary-container: #fbd7fc;
+    --md-sys-color-on-tertiary-container: #29132d;
+    --md-sys-color-error: #b3261e;
+    --md-sys-color-on-error: #ffffff;
+    --md-sys-color-error-container: #f9dedc;
+    --md-sys-color-on-error-container: #410e0b;
+    --md-sys-color-background: #f8fafd;
+    --md-sys-color-on-background: #1f1f1f;
+    --md-sys-color-surface: #f8fafd;
+    --md-sys-color-surface-dim: #d9dce3;
+    --md-sys-color-surface-bright: #f8fafd;
+    --md-sys-color-surface-container-lowest: #ffffff;
+    --md-sys-color-surface-container-low: #f3f6fc;
+    --md-sys-color-surface-container: #edf1f9;
+    --md-sys-color-surface-container-high: #e7ebf3;
+    --md-sys-color-surface-container-highest: #e0e5ee;
+    --md-sys-color-on-surface: #1f1f1f;
+    --md-sys-color-surface-variant: #dfe2eb;
+    --md-sys-color-on-surface-variant: #444746;
+    --md-sys-color-outline: #747775;
+    --md-sys-color-outline-variant: #c4c7c5;
+    --md-sys-color-inverse-surface: #2f3033;
+    --md-sys-color-inverse-on-surface: #f1f0f4;
+    --md-sys-color-inverse-primary: #a8c7fa;
+    --md-sys-color-surface-tint: #0b57d0;
+    --md-sys-color-scrim: #000000;
+    --md-sys-color-shadow: #000000;
+  }
+  .sw { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .2); }
+  #cropBox { border-color: #fff; outline: 1px solid rgba(0, 0, 0, .45); }
+  #cropBox i { filter: drop-shadow(0 0 1px rgba(0, 0, 0, .7)); }
+}
 
 /* ---- Cấu hình thành phần MWC ---- */
 md-icon { font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24; font-size: 24px; }
@@ -232,7 +282,7 @@ md-dialog {
 
 #workspace { display: flex; min-height: 0; background: var(--md-sys-color-surface); }
 #stage {
-  flex: 1; position: relative; overflow: hidden; background: #000; border-radius: var(--r-xl) var(--r-xl) 0 0;
+  flex: 1; position: relative; overflow: hidden; background: var(--stage-bg); border-radius: var(--r-xl) var(--r-xl) 0 0;
   touch-action: none; user-select: none; -webkit-user-select: none;
 }
 #workspace:has(#panel:not([hidden])) #stage { border-radius: var(--r-xl); margin: 0 0 12px 12px; }
@@ -274,7 +324,8 @@ md-dialog {
 .center-msg .code { font-family: ui-monospace, Consolas, monospace; font-size: 12px; opacity: .7; }
 .center-msg .row { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; justify-content: center; }
 .center-msg .logo img { border-radius: 32px; display: block; animation: pop .6s var(--spring) both; }
-.err-ic { --md-icon-size: 88px; font-size: 88px; color: var(--md-sys-color-error); }
+.err-img { display: block; margin-bottom: 4px; }
+.err-img img { width: min(200px, 48vw); height: auto; display: block; animation: pop .5s var(--spring) both; }
 #error md-filled-tonal-button { margin-top: 24px; }
 
 /* Nút chuyển ảnh */
@@ -287,7 +338,7 @@ md-dialog {
 /* ---- Khung cắt ---- */
 #cropBox {
   position: absolute; border: 2px solid #fff; cursor: move; touch-action: none;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, .6);
+  box-shadow: 0 0 0 9999px var(--scrim-crop);
   background:
     linear-gradient(rgba(255,255,255,.4), rgba(255,255,255,.4)) 33.33% 0 / 1px 100% no-repeat,
     linear-gradient(rgba(255,255,255,.4), rgba(255,255,255,.4)) 66.66% 0 / 1px 100% no-repeat,

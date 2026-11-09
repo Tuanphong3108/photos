@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Photos</title>
-<meta name="theme-color" content="#15191f">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f8fafd" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15191f" media="(prefers-color-scheme: dark)">
 <meta name="description" content="Photos - trình xem và chỉnh sửa ảnh kiểu ChromeOS Gallery, thiết kế Material 3 Expressive">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
@@ -107,7 +109,10 @@
 
       <!-- Lỗi -->
       <div class="center-msg" id="error">
-        <md-icon class="err-ic" data-i="broken_image"></md-icon>
+        <picture class="err-img">
+          <source srcset="images/error-dark.png" media="(prefers-color-scheme: dark)">
+          <img src="images/error.png" alt="" width="200" height="200" decoding="async">
+        </picture>
         <h2 id="errTitle">Không thể mở ảnh này</h2>
         <p id="errText"></p>
         <p class="code" id="errCode"></p>
