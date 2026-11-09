@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Photos</title>
+<meta name="theme-color" content="#15191f">
+<meta name="description" content="Photos - trình xem và chỉnh sửa ảnh kiểu ChromeOS Gallery, thiết kế Material 3 Expressive">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preload" href="fonts/symbols-subset.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/gsf-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+<script type="module" src="vendor/mwc.js"></script>
+<script type="module" src="app.js"></script>
+</head>
+<body>
+
+<div id="app" data-state="empty" data-tool="">
+
+  <!-- ============ Thanh công cụ ============ -->
+  <header id="topbar">
+    <div class="tb-left">
+      <h1 id="fileName"></h1>
+      <span id="fileCount"></span>
+    </div>
+
+    <div class="toolbar" id="tbView">
+      <md-icon-button id="btnInfo" data-tip="Thông tin" aria-label="Thông tin"><md-icon data-i="info"></md-icon></md-icon-button>
+      <md-icon-button id="btnShare" data-tip="Chia sẻ" aria-label="Chia sẻ"><md-icon data-i="share"></md-icon></md-icon-button>
+      <md-icon-button id="btnZoomOut" data-tip="Thu nhỏ" aria-label="Thu nhỏ"><md-icon data-i="zoom_out"></md-icon></md-icon-button>
+      <md-icon-button id="btnZoomIn" data-tip="Phóng to" aria-label="Phóng to"><md-icon data-i="zoom_in"></md-icon></md-icon-button>
+      <span class="sep"></span>
+      <md-icon-button id="btnCrop" data-tip="Cắt và xoay" aria-label="Cắt và xoay"><md-icon data-i="crop_rotate"></md-icon></md-icon-button>
+      <md-icon-button id="btnResize" data-tip="Đổi kích thước" aria-label="Đổi kích thước"><md-icon data-i="resize"></md-icon></md-icon-button>
+      <md-icon-button id="btnAdjust" data-tip="Ánh sáng và màu sắc" aria-label="Ánh sáng và màu sắc"><md-icon data-i="tune"></md-icon></md-icon-button>
+      <md-icon-button id="btnDraw" data-tip="Chú thích" aria-label="Chú thích"><md-icon data-i="draw"></md-icon></md-icon-button>
+      <span class="sep"></span>
+      <md-icon-button class="js-undo" data-tip="Hoàn tác" aria-label="Hoàn tác"><md-icon data-i="undo"></md-icon></md-icon-button>
+      <md-icon-button class="js-redo" data-tip="Làm lại" aria-label="Làm lại"><md-icon data-i="redo"></md-icon></md-icon-button>
+    </div>
+
+    <div class="toolbar" id="tbDraw" hidden>
+      <md-icon-button class="js-undo" data-tip="Hoàn tác" aria-label="Hoàn tác"><md-icon data-i="undo"></md-icon></md-icon-button>
+      <md-icon-button class="js-redo" data-tip="Làm lại" aria-label="Làm lại"><md-icon data-i="redo"></md-icon></md-icon-button>
+    </div>
+
+    <div class="tb-right">
+      <md-filled-tonal-button id="btnCancel" hidden>Hủy chỉnh sửa</md-filled-tonal-button>
+      <div class="split" id="saveGroup" hidden>
+        <md-filled-button id="btnSave">Lưu</md-filled-button>
+        <md-filled-button id="btnSaveMenu" class="caret" aria-label="Tùy chọn lưu"><md-icon data-i="arrow_drop_down"></md-icon></md-filled-button>
+        <md-menu id="saveMenu" anchor="saveGroup" anchor-corner="end-end" menu-corner="start-end">
+          <md-menu-item id="miSaveAsDd"><div slot="headline">Lưu dưới dạng</div></md-menu-item>
+        </md-menu>
+      </div>
+      <md-filled-tonal-button id="btnCloseDraw" hidden>Đóng</md-filled-tonal-button>
+
+      <span class="anchor">
+        <md-icon-button id="btnMore" data-tip="Thêm" aria-label="Thêm"><md-icon data-i="more_vert"></md-icon></md-icon-button>
+        <md-menu id="moreMenu" anchor="btnMore" anchor-corner="end-end" menu-corner="start-end">
+          <md-menu-item id="miPrint"><div slot="headline">In</div><div slot="end" class="kbd">Ctrl + P</div></md-menu-item>
+          <md-menu-item id="miSaveAs"><div slot="headline">Lưu dưới dạng</div><div slot="end" class="kbd">Ctrl + S</div></md-menu-item>
+          <md-menu-item id="miOpen"><div slot="headline">Mở...</div><div slot="end" class="kbd">Ctrl + O</div></md-menu-item>
+          <md-menu-item id="miOpenDir"><div slot="headline">Mở thư mục...</div></md-menu-item>
+          <md-sub-menu>
+            <md-menu-item slot="item" id="miHelp"><div slot="headline">Trợ giúp</div><md-icon slot="end" data-i="chevron_right"></md-icon></md-menu-item>
+            <md-menu slot="menu" id="helpMenu" anchor-corner="start-end" menu-corner="start-start">
+              <md-menu-item id="miKeys"><div slot="headline">Phím tắt</div></md-menu-item>
+              <md-menu-item id="miAbout"><div slot="headline">Giới thiệu Photos</div></md-menu-item>
+            </md-menu>
+          </md-sub-menu>
+          <md-menu-item id="miLicense"><div slot="headline">Giấy phép</div></md-menu-item>
+        </md-menu>
+      </span>
+    </div>
+  </header>
+
+  <!-- ============ Vùng làm việc ============ -->
+  <main id="workspace">
+    <section id="stage">
+      <canvas id="view" hidden></canvas>
+
+      <div id="cropBox" hidden>
+        <i data-h="nw"></i><i data-h="n"></i><i data-h="ne"></i>
+        <i data-h="w"></i><i data-h="e"></i>
+        <i data-h="sw"></i><i data-h="s"></i><i data-h="se"></i>
+      </div>
+
+      <md-filled-tonal-icon-button class="nav prev" id="navPrev" aria-label="Ảnh trước" hidden><md-icon data-i="chevron_left"></md-icon></md-filled-tonal-icon-button>
+      <md-filled-tonal-icon-button class="nav next" id="navNext" aria-label="Ảnh sau" hidden><md-icon data-i="chevron_right"></md-icon></md-filled-tonal-icon-button>
+
+      <!-- Trạng thái trống -->
+      <div class="center-msg" id="empty">
+        <div class="logo" aria-hidden="true"><img src="icons/icon-192.png" alt="" width="112" height="112"></div>
+        <h2>Photos</h2>
+        <p>Kéo thả ảnh hoặc thư mục vào đây, hoặc dán ảnh từ bộ nhớ tạm.</p>
+        <div class="row">
+          <md-filled-button id="btnOpenEmpty"><md-icon slot="icon" data-i="add_photo_alternate"></md-icon>Mở ảnh</md-filled-button>
+          <md-filled-tonal-button id="btnOpenDirEmpty"><md-icon slot="icon" data-i="folder_open"></md-icon>Mở thư mục</md-filled-tonal-button>
+        </div>
+      </div>
+
+      <!-- Đang tải -->
+      <div class="center-msg" id="loading"><md-circular-progress indeterminate aria-label="Đang tải"></md-circular-progress></div>
+
+      <!-- Lỗi -->
+      <div class="center-msg" id="error">
+        <md-icon class="err-ic" data-i="broken_image"></md-icon>
+        <h2 id="errTitle">Không thể mở ảnh này</h2>
+        <p id="errText"></p>
+        <p class="code" id="errCode"></p>
+        <md-filled-tonal-button id="btnErrOpen">Mở ảnh khác</md-filled-tonal-button>
+      </div>
+    </section>
+
+    <!-- ============ Bảng bên phải ============ -->
+    <aside id="panel" hidden>
+
+      <!-- Thông tin -->
+      <section data-panel="info" hidden>
+        <h2 class="p-title">Thông tin</h2>
+        <dl id="infoList"></dl>
+      </section>
+
+      <!-- Cắt và xoay -->
+      <section data-panel="crop" hidden>
+        <div class="p-label">Xoay và lật</div>
+        <div class="row4">
+          <md-filled-tonal-icon-button class="wide" id="btnRotL" data-tip="Xoay trái 90°" aria-label="Xoay trái 90°"><md-icon data-i="rotate_left"></md-icon></md-filled-tonal-icon-button>
+          <md-filled-tonal-icon-button class="wide" id="btnRotR" data-tip="Xoay phải 90°" aria-label="Xoay phải 90°"><md-icon data-i="rotate_right"></md-icon></md-filled-tonal-icon-button>
+          <md-filled-tonal-icon-button class="wide" id="btnFlipH" data-tip="Lật ngang" aria-label="Lật ngang"><md-icon data-i="flip"></md-icon></md-filled-tonal-icon-button>
+          <md-filled-tonal-icon-button class="wide" id="btnFlipV" data-tip="Lật dọc" aria-label="Lật dọc"><md-icon class="rot90" data-i="flip"></md-icon></md-filled-tonal-icon-button>
+        </div>
+        <div class="p-label">Tỷ lệ khung hình</div>
+        <md-chip-set id="ratioChips" aria-label="Tỷ lệ khung hình"></md-chip-set>
+        <div class="p-label muted" id="cropInfo"></div>
+        <md-filled-tonal-button class="full" id="btnApplyCrop"><md-icon slot="icon" data-i="crop"></md-icon>Áp dụng</md-filled-tonal-button>
+      </section>
+
+      <!-- Đổi kích thước -->
+      <section data-panel="resize" hidden>
+        <div class="sizegrid">
+          <md-outlined-text-field id="inW" type="number" label="Chiều rộng" suffix-text="px" min="1" max="16384" inputmode="numeric"></md-outlined-text-field>
+          <md-outlined-text-field id="inH" type="number" label="Chiều cao" suffix-text="px" min="1" max="16384" inputmode="numeric"></md-outlined-text-field>
+          <div class="lockcol">
+            <span class="br top"></span>
+            <md-icon-button id="btnLock" data-tip="Bật/tắt khóa tỷ lệ khung hình" aria-label="Bật/tắt khóa tỷ lệ khung hình"><md-icon data-i="lock"></md-icon></md-icon-button>
+            <span class="br bot"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Ánh sáng và màu sắc -->
+      <section data-panel="adjust" hidden>
+        <div class="slider"><label>Độ phơi sáng</label><md-slider id="sExp" min="-100" max="100" step="1" value="0" labeled aria-label="Độ phơi sáng"></md-slider></div>
+        <div class="slider"><label>Độ tương phản</label><md-slider id="sCon" min="-100" max="100" step="1" value="0" labeled aria-label="Độ tương phản"></md-slider></div>
+        <div class="slider"><label>Độ bão hòa</label><md-slider id="sSat" min="-100" max="100" step="1" value="0" labeled aria-label="Độ bão hòa"></md-slider></div>
+        <md-filled-tonal-button class="full" id="btnResetAdj"><md-icon slot="icon" data-i="restart_alt"></md-icon>Đặt lại</md-filled-tonal-button>
+      </section>
+
+      <!-- Chú thích -->
+      <section data-panel="draw" hidden>
+        <div class="drawtools" id="toolBtns">
+          <md-icon-button class="dt on" data-dt="pen" data-tip="Bút" aria-label="Bút"><md-icon data-i="ink_pen"></md-icon></md-icon-button>
+          <md-icon-button class="dt" data-dt="highlighter" data-tip="Bút đánh dấu" aria-label="Bút đánh dấu"><md-icon data-i="ink_highlighter"></md-icon></md-icon-button>
+          <md-icon-button class="dt" data-dt="eraser" data-tip="Tẩy" aria-label="Tẩy"><md-icon data-i="ink_eraser"></md-icon></md-icon-button>
+        </div>
+        <div class="p-label">Kích thước</div>
+        <div class="sizes" id="sizeBtns"></div>
+        <md-outlined-segmented-button-set class="seg" id="colorTabs" aria-label="Kiểu chọn màu">
+          <md-outlined-segmented-button id="tabPalette" label="Bảng màu" selected></md-outlined-segmented-button>
+          <md-outlined-segmented-button id="tabCustom" label="Tuỳ chỉnh"></md-outlined-segmented-button>
+        </md-outlined-segmented-button-set>
+        <div class="palette" id="palette"></div>
+        <div class="picker" id="picker" hidden>
+          <div id="svBox"><div id="svThumb"></div></div>
+          <div id="hueBar"><div id="hueThumb"></div></div>
+          <md-outlined-text-field id="hexIn" label="Hệ lục phân" value="#000000" spellcheck="false" autocomplete="off"></md-outlined-text-field>
+        </div>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<md-dialog id="dlg">
+  <div slot="headline" id="dlgTitle"></div>
+  <div slot="content" id="dlgBody" class="dlg-body"></div>
+  <div slot="actions" id="dlgActions"></div>
+</md-dialog>
+<div id="tip" hidden></div>
+<div id="toast" hidden></div>
+<div id="printWrap"><img id="printImg" alt=""></div>
+<input type="file" id="fileInput" accept="image/*" multiple hidden>
+
+</body>
+</html>
