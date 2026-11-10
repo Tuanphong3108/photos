@@ -10,7 +10,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 /* ============================================================
    Biểu tượng: Material Symbols (font con, gọi bằng mã điểm)
    ============================================================ */
-const SYM = {"info":59534,"share":59405,"zoom_out":59648,"zoom_in":59647,"crop_rotate":58423,"resize":63239,"tune":58409,"draw":59206,"undo":57702,"redo":57690,"more_vert":58836,"arrow_drop_down":58821,"chevron_left":58376,"chevron_right":58377,"lock":59533,"lock_open":59544,"rotate_left":58393,"rotate_right":58394,"flip":58344,"ink_highlighter":59089,"ink_eraser":59088,"ink_pen":59091,"edit":57680,"broken_image":58285,"folder_open":58056,"image":57937,"check":58826,"close":57676,"photo_library":58387,"add_photo_alternate":58430,"print":58709,"save":57697,"content_paste":57679,"aspect_ratio":59483,"crop":58302,"restart_alt":61523,"document_scanner":58874,"palette":58295,"keyboard":58130,"help":59527,"description":59507,"open_in_new":59541,"save_as":60256,"file_open":60147,"delete":59506,"refresh":58837,"arrow_back":58820,"arrow_forward":58824,"colorize":58296,"menu_book":59929,"gif_box":59299};
+const SYM = {"info":59534,"share":59405,"zoom_out":59648,"zoom_in":59647,"crop_rotate":58423,"resize":63239,"tune":58409,"draw":59206,"undo":57702,"redo":57690,"more_vert":58836,"arrow_drop_down":58821,"chevron_left":58376,"chevron_right":58377,"lock":59533,"lock_open":59544,"rotate_left":58393,"rotate_right":58394,"flip":58344,"ink_highlighter":59089,"ink_eraser":59088,"ink_pen":59091,"edit":57680,"broken_image":58285,"folder_open":58056,"image":57937,"check":58826,"close":57676,"photo_library":58387,"add_photo_alternate":58430,"print":58709,"save":57697,"content_paste":57679,"aspect_ratio":59483,"crop":58302,"restart_alt":61523,"document_scanner":58874,"palette":58295,"keyboard":58130,"help":59527,"description":59507,"open_in_new":59541,"save_as":60256,"file_open":60147,"delete":59506,"refresh":58837,"arrow_back":58820,"arrow_forward":58824,"colorize":58296,"menu_book":59929,"gif_box":59299,"text_fields":57954};
 const sym = n => String.fromCodePoint(SYM[n]);
 const lineIcon = w => `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><line x1="6" y1="18" x2="18" y2="6" stroke="currentColor" stroke-width="${w}" stroke-linecap="round"/></svg>`;
 const paintIcons = (root = document) => $$('md-icon[data-i]', root).forEach(el => { el.textContent = sym(el.dataset.i); });
@@ -45,7 +45,8 @@ const S = {
   token: 0,
   anim: false, animUrl: '',
   exif: null,
-  draw: { tool: 'pen', sizeIdx: 2, color: '#000000' }
+  draw: { tool: 'pen', sizeIdx: 2, color: '#000000' },
+  text: { font: 'Google Sans Flex', size: 40, wght: 400, rond: 0, at: null }
 };
 const cur = () => S.H[S.hi];
 const isDirty = () => S.hi > 0;
@@ -113,8 +114,8 @@ function applyOp(fn) {
   const base = flatten(cur());
   pushEntry({ c: fn(base), a: null, adj: { ...zeroAdj } });
 }
-function undo() { if (S.hi > 0 && !S.stroke) { S.hi--; afterChange(); } }
-function redo() { if (S.hi < S.H.length - 1 && !S.stroke) { S.hi++; afterChange(); } }
+function undo() { commitText(); if (S.hi > 0 && !S.stroke) { S.hi--; afterChange(); } }
+function redo() { commitText(); if (S.hi < S.H.length - 1 && !S.stroke) { S.hi++; afterChange(); } }
 
 /* Các phép biến đổi */
 const opRotate = dir => applyOp(b => {
@@ -182,6 +183,7 @@ function render() {
   view.style.filter = cssFilter(S.liveAdj || e.adj);
   stage.classList.toggle('zoomed', S.scale > S.fit * 1.001 && S.tool !== 'draw');
   if (S.tool === 'crop') placeCropBox();
+  placeText();
   $('#btnZoomOut').disabled = S.scale <= S.fit * 1.001;
   $('#btnZoomIn').disabled = S.scale >= 32;
 }
@@ -255,12 +257,14 @@ function setTool(t) {
   if (S.tool === t) t = '';
   if (S.anim && t && t !== 'info') { toast('Ảnh động chỉ có thể xem, chưa chỉnh sửa được'); return; }
   if (S.stroke) strokeCancel();
+  commitText();
   S.tool = t; app.dataset.tool = t;
   $('#panel').hidden = !t;
   $$('#panel > section').forEach(s => { s.hidden = s.dataset.panel !== t; });
   if (t === 'crop') { S.fitMode = true; resetCrop(); }
   if (t === 'resize') { $('#inW').value = S.iw; $('#inH').value = S.ih; }
   stage.classList.toggle('drawing', t === 'draw');
+  stage.classList.toggle('texting', t === 'draw' && S.draw.tool === 'text');
   updateUI(); layout(); updateInfo();
 }
 $('#btnInfo').onclick = () => setTool('info');
@@ -405,7 +409,7 @@ const SIZE_PX = [2, 4, 7, 12, 20];
 const SIZE_ICON = [1, 2, 3.5, 5.5, 8];
 $('#sizeBtns').innerHTML = SIZE_ICON.map((w, i) => `<md-icon-button data-i="${i}" aria-label="Kích thước ${i + 1}">${lineIcon(w)}</md-icon-button>`).join('');
 $('#sizeBtns').addEventListener('click', e => { const b = e.target.closest('md-icon-button'); if (b) { S.draw.sizeIdx = +b.dataset.i; syncDraw(); } });
-$('#toolBtns').addEventListener('click', e => { const b = e.target.closest('.dt'); if (b) { S.draw.tool = b.dataset.dt; syncDraw(); } });
+$('#toolBtns').addEventListener('click', e => { const b = e.target.closest('.dt'); if (b) { commitText(); S.draw.tool = b.dataset.dt; syncDraw(); } });
 const PALETTE = [
   '#000000', '#5f6368', '#9aa0a6', '#dadce0', '#ffffff',
   '#f28b82', '#fdd663', '#81c995', '#8ab4f8', '#f6cfb0',
@@ -417,6 +421,10 @@ $('#palette').addEventListener('click', e => { const b = e.target.closest('.sw')
 function setColor(hex) { S.draw.color = hex.toLowerCase(); syncDraw(); syncPicker(true); }
 function syncDraw() {
   $$('#toolBtns .dt').forEach(b => b.classList.toggle('on', b.dataset.dt === S.draw.tool));
+  const isText = S.draw.tool === 'text';
+  $('#penOpts').hidden = isText; $('#textOpts').hidden = !isText;
+  stage.classList.toggle('texting', S.tool === 'draw' && isText);
+  if (isText) syncText(); else cancelText();
   $$('#sizeBtns md-icon-button').forEach(b => b.classList.toggle('on', +b.dataset.i === S.draw.sizeIdx));
   $$('#palette .sw').forEach(b => b.classList.toggle('on', b.dataset.c === S.draw.color));
 }
@@ -506,6 +514,98 @@ function strokeEnd() {
   S.stroke = null;
   pushEntry({ c: ent.c, a: st.work, adj: ent.adj });
 }
+
+/* ---- Đánh chữ ---- */
+const FONTS = [
+  { n: 'Google Sans Flex', w: [1, 1000], flex: true },
+  { n: 'Roboto', w: [100, 900] },
+  { n: 'Open Sans', w: [300, 800] },
+  { n: 'Montserrat', w: [100, 900] },
+  { n: 'Lora', w: [400, 700], serif: true },
+  { n: 'Playfair Display', w: [400, 900], serif: true },
+  { n: 'Roboto Mono', w: [100, 700], mono: true },
+  { n: 'Dancing Script', w: [400, 700], script: true },
+  { n: 'Arial', w: [400, 700], sys: true },
+  { n: 'Times New Roman', w: [400, 700], sys: true, serif: true },
+  { n: 'Courier New', w: [400, 700], sys: true, mono: true }
+];
+const fontInfo = n => FONTS.find(f => f.n === n) || FONTS[0];
+var textBox = $('#textBox');
+const fSel = $('#fontSel');
+fSel.innerHTML = FONTS.map(f => `<md-select-option value="${f.n}"${f.n === S.text.font ? ' selected' : ''}><div slot="headline" style="font-family:'${f.n}'">${f.n}</div></md-select-option>`).join('');
+fSel.addEventListener('change', () => { S.text.font = fSel.value; const f = fontInfo(S.text.font); S.text.wght = clamp(S.text.wght, f.w[0], f.w[1]); syncText(); });
+$('#tSize').addEventListener('input', e => { S.text.size = +e.target.value; syncText(); });
+$('#tWght').addEventListener('input', e => { S.text.wght = +e.target.value; syncText(); });
+$('#tRond').addEventListener('input', e => { S.text.rond = +e.target.value; syncText(); });
+const variation = () => { const f = fontInfo(S.text.font); if (f.sys) return 'normal'; return f.flex ? `"wght" ${S.text.wght}, "ROND" ${S.text.rond}` : `"wght" ${S.text.wght}`; };
+const fontStack = () => { const f = fontInfo(S.text.font); return `"${f.n}", ${f.mono ? 'monospace' : f.serif ? 'serif' : f.script ? 'cursive' : 'sans-serif'}`; };
+const fontPx = () => S.text.size * lineScale();
+function syncText() {
+  const t = S.text, f = fontInfo(t.font);
+  const w = $('#tWght'); w.min = f.w[0]; w.max = f.w[1]; w.value = clamp(t.wght, f.w[0], f.w[1]);
+  $('#rondRow').hidden = !f.flex;
+  fSel.value = t.font;
+  placeText();
+}
+function placeText() {
+  if (textBox.hidden || !S.text.at) return;
+  const r = rect(), t = S.text, f = fontInfo(t.font);
+  Object.assign(textBox.style, {
+    left: r.x + t.at.x * S.scale + 'px', top: r.y + t.at.y * S.scale + 'px',
+    fontFamily: fontStack(), fontSize: fontPx() * S.scale + 'px', color: S.draw.color,
+    fontWeight: f.sys ? (t.wght >= 600 ? 700 : 400) : t.wght, fontVariationSettings: variation()
+  });
+}
+function startText(p) {
+  S.text.at = { x: p.x, y: p.y };
+  textBox.textContent = ''; textBox.hidden = false;
+  placeText();
+  document.fonts.load(`${S.text.wght} 20px ${fontStack()}`, 'Aa Ăâđ').catch(() => {});
+  requestAnimationFrame(() => textBox.focus());
+}
+function cancelText() { if (!textBox) return; textBox.hidden = true; textBox.textContent = ''; S.text.at = null; }
+function commitText() {
+  if (!textBox) return false;
+  if (textBox.hidden) return false;
+  const txt = textBox.innerText.replace(/ /g, ' ').replace(/\n+$/, '');
+  const at = S.text.at;
+  cancelText();
+  if (!txt.trim() || !at) return false;
+  rasterText(txt, at);
+  return true;
+}
+function rasterText(txt, at) {
+  const ent = cur(), t = S.text, f = fontInfo(t.font), px = fontPx(), lh = px * 1.25;
+  const w = f.sys ? (t.wght >= 600 ? 700 : 400) : t.wght;
+  const probe = document.createElement('canvas');
+  probe.width = 4; probe.height = 4;
+  probe.style.cssText = 'position:fixed;left:-9999px;top:0;pointer-events:none';
+  probe.style.fontVariationSettings = variation();
+  document.body.appendChild(probe);
+  const x = probe.getContext('2d'); x.font = `${w} ${px}px ${fontStack()}`;
+  const m = x.measureText('Hg'), asc = m.fontBoundingBoxAscent || px * .9, desc = m.fontBoundingBoxDescent || px * .25;
+  const base = (lh - (asc + desc)) / 2 + asc;
+  const work = ent.a ? clone(ent.a) : mk(S.iw, S.ih);
+  /* vẽ trực tiếp lên canvas ghim vào DOM để áp dụng font-variation-settings */
+  const layer = mk(S.iw, S.ih);
+  layer.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none';
+  layer.style.fontVariationSettings = variation();
+  document.body.appendChild(layer);
+  const c = layer.getContext('2d');
+  c.font = `${w} ${px}px ${fontStack()}`; c.fillStyle = S.draw.color; c.textBaseline = 'alphabetic';
+  txt.split('\n').forEach((line, i) => c.fillText(line, at.x, at.y + i * lh + base));
+  work.getContext('2d').drawImage(layer, 0, 0);
+  layer.remove(); probe.remove();
+  pushEntry({ c: ent.c, a: work, adj: ent.adj });
+}
+textBox.addEventListener('keydown', e => {
+  e.stopPropagation();
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitText(); }
+  else if (e.key === 'Escape') { e.preventDefault(); cancelText(); }
+});
+textBox.addEventListener('paste', e => { e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData.getData('text/plain') || '')); });
+textBox.addEventListener('pointerdown', e => e.stopPropagation());
+
 function strokeCancel() { if (S.stroke) { S.stroke = null; render(); } }
 
 /* ============================================================
@@ -514,7 +614,8 @@ function strokeCancel() { if (S.stroke) { S.stroke = null; render(); } }
 const ptrs = new Map(); let gesture = null;
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 stage.addEventListener('pointerdown', e => {
-  if (app.dataset.state !== 'image' || e.button > 0 || e.target.closest('.nav,#cropBox')) return;
+  if (app.dataset.state !== 'image' || e.button > 0 || e.target.closest('.nav,#cropBox,#textBox')) return;
+  if (S.tool === 'draw' && S.draw.tool === 'text') { e.preventDefault(); commitText(); startText(toImg(e)); return; }
   stage.setPointerCapture(e.pointerId);
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (S.tool === 'draw') { if (ptrs.size === 1) strokeStart(e); else strokeCancel(); return; }
@@ -655,6 +756,7 @@ function openList(list) {
   S.files = list; openIndex(0, false);
 }
 function go(d) {
+  commitText();
   const n = S.idx + d;
   if (n >= 0 && n < S.files.length) openIndex(n, false);
 }
@@ -918,6 +1020,7 @@ async function writeTo(handle, blob) {
   const w = await handle.createWritable(); await w.write(blob); await w.close();
 }
 async function save() {
+  commitText();
   if (app.dataset.state !== 'image') return;
   if (!isDirty()) { toast('Chưa có thay đổi nào'); return; }
   const f = S.files[S.idx], mime = extMime(f.name);
@@ -926,6 +1029,7 @@ async function save() {
   catch (e) { if (e.name !== 'AbortError') { toast('Không thể lưu vào tệp gốc, hãy thử "Lưu dưới dạng"'); } }
 }
 async function saveAs() {
+  commitText();
   if (app.dataset.state !== 'image') return;
   if (S.anim) { toast('Ảnh động chỉ có thể xem'); return; }
   const f = S.files[S.idx], base = f.name.replace(/\.[^.]+$/, ''), m0 = extMime(f.name) || 'image/png';
@@ -1007,6 +1111,7 @@ const HELP_HTML = `
   <li><b>Đổi kích thước:</b> nhập chiều rộng và chiều cao. Bật / tắt khóa tỷ lệ khung hình để giữ hoặc thay đổi tỷ lệ.</li>
   <li><b>Ánh sáng và màu sắc:</b> kéo thanh trượt để chỉnh độ phơi sáng, độ tương phản và độ bão hòa.</li>
   <li><b>Chú thích:</b> vẽ bằng bút, bút đánh dấu hoặc dùng tẩy để xóa nét đã vẽ. Chọn kích thước nét và màu từ bảng màu, hoặc chọn <b>Tuỳ chỉnh</b> để nhập mã màu hay dùng <b>Color Picker</b> lấy màu từ bất kỳ đâu trên màn hình. Chọn <b>Đóng</b> khi vẽ xong.</li>
+  <li><b>Đánh chữ:</b> trong <b>Chú thích</b>, chọn công cụ chữ, nhấn vào ảnh rồi gõ. Chọn phông, cỡ chữ và độ đậm; với Google Sans Flex còn chỉnh được độ bo tròn. Nhấn Enter để hoàn tất, Shift+Enter để xuống dòng, Esc để huỷ.</li>
   <li><b>Hoàn tác và làm lại:</b> dùng biểu tượng Hoàn tác / Làm lại (<kbd>Ctrl + Z</kbd> / <kbd>Ctrl + Shift + Z</kbd>).</li>
 </ul>
 
@@ -1031,7 +1136,7 @@ $('#miHelp').onclick = async () => {
 };
 $('#miLicense').onclick = () => {
   closeMenus();
-  dialog('Giấy phép', '<pre>Photos — Giấy phép MIT\n© 2026 Phong VN\n\nThành phần bên thứ ba:\n• Material Web Components (@material/web) — Giấy phép Apache 2.0\n• Material Symbols — Giấy phép Apache 2.0\n• Google Sans Flex — SIL Open Font License 1.1</pre>', [{ label: 'Đóng', value: 'ok' }]);
+  dialog('Giấy phép', '<pre>Photos — Giấy phép MIT\n© 2026 Tuanphong3108\n\nThành phần bên thứ ba:\n• Material Web Components (@material/web) — Giấy phép Apache 2.0\n• Material Symbols — Giấy phép Apache 2.0\n• Google Sans Flex, Roboto, Open Sans, Montserrat, Lora, Playfair Display, Roboto Mono, Dancing Script — SIL Open Font License 1.1</pre>', [{ label: 'Đóng', value: 'ok' }]);
 };
 function dialog(title, body, actions) {
   return new Promise(res => {
@@ -1076,7 +1181,7 @@ function toast(msg) {
 document.addEventListener('keydown', e => {
   if ($('#dlg').open) return;
   const inner = (e.composedPath && e.composedPath()[0]) || e.target;
-  const mod = e.ctrlKey || e.metaKey, typing = /^(INPUT|TEXTAREA)$/.test(inner.tagName) && inner.type !== 'range';
+  const mod = e.ctrlKey || e.metaKey, typing = (/^(INPUT|TEXTAREA)$/.test(inner.tagName) && inner.type !== 'range') || inner.id === 'textBox';
   const onRange = inner.type === 'range';
   const k = e.key.toLowerCase();
   if (mod && k === 's') { e.preventDefault(); saveAs(); return; }

@@ -91,6 +91,7 @@
       <md-filled-tonal-icon-button class="nav next" id="navNext" aria-label="Ảnh sau" hidden><md-icon data-i="chevron_right"></md-icon></md-filled-tonal-icon-button>
 
       <!-- Trạng thái trống -->
+      <div id="textBox" contenteditable="true" spellcheck="false" hidden></div>
       <div class="center-msg" id="empty">
         <div class="logo" aria-hidden="true"><img src="icons/icon-192.png" alt="" width="112" height="112" draggable="false"></div>
         <h2>Photos</h2>
@@ -168,9 +169,20 @@
           <md-icon-button class="dt on" data-dt="pen" data-tip="Bút" aria-label="Bút"><md-icon data-i="ink_pen"></md-icon></md-icon-button>
           <md-icon-button class="dt" data-dt="highlighter" data-tip="Bút đánh dấu" aria-label="Bút đánh dấu"><md-icon data-i="ink_highlighter"></md-icon></md-icon-button>
           <md-icon-button class="dt" data-dt="eraser" data-tip="Tẩy" aria-label="Tẩy"><md-icon data-i="ink_eraser"></md-icon></md-icon-button>
+          <md-icon-button class="dt" data-dt="text" data-tip="Đánh chữ" aria-label="Đánh chữ"><md-icon data-i="text_fields"></md-icon></md-icon-button>
         </div>
-        <div class="p-label">Kích thước</div>
-        <div class="sizes" id="sizeBtns"></div>
+        <div id="penOpts">
+          <div class="p-label">Kích thước</div>
+          <div class="sizes" id="sizeBtns"></div>
+        </div>
+        <div id="textOpts" hidden>
+          <div class="p-label">Phông chữ</div>
+          <md-outlined-select id="fontSel" aria-label="Phông chữ"></md-outlined-select>
+          <div class="slider"><label>Cỡ chữ</label><md-slider id="tSize" min="8" max="160" step="1" value="40" labeled aria-label="Cỡ chữ"></md-slider></div>
+          <div class="slider"><label>Độ đậm</label><md-slider id="tWght" min="100" max="900" step="1" value="400" labeled aria-label="Độ đậm"></md-slider></div>
+          <div class="slider" id="rondRow"><label>Độ bo tròn</label><md-slider id="tRond" min="0" max="100" step="1" value="0" labeled aria-label="Độ bo tròn"></md-slider></div>
+          <div class="p-label muted">Nhấn vào ảnh để gõ chữ. Enter để xong, Shift+Enter để xuống dòng, Esc để huỷ.</div>
+        </div>
         <md-outlined-segmented-button-set class="seg" id="colorTabs" aria-label="Kiểu chọn màu">
           <md-outlined-segmented-button id="tabPalette" label="Bảng màu" selected></md-outlined-segmented-button>
           <md-outlined-segmented-button id="tabCustom" label="Tuỳ chỉnh"></md-outlined-segmented-button>
