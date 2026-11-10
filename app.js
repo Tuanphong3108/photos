@@ -539,7 +539,7 @@ $('#btnItalic').onclick = () => { S.text.italic = !S.text.italic; syncText(); };
 $('#tSize').addEventListener('input', e => { S.text.size = +e.target.value; syncText(); });
 $('#tWght').addEventListener('input', e => { S.text.wght = +e.target.value; syncText(); });
 $('#tRond').addEventListener('input', e => { S.text.rond = +e.target.value; syncText(); });
-const variation = () => { const f = fontInfo(S.text.font); if (f.sys) return 'normal'; return f.flex ? `"wght" ${S.text.wght}, "ROND" ${S.text.rond}` : `"wght" ${S.text.wght}`; };
+const variation = () => { const f = fontInfo(S.text.font); if (f.sys) return 'normal'; return f.flex ? `"wght" ${S.text.wght}, "ROND" ${S.text.rond}, "slnt" ${S.text.italic ? -10 : 0}` : `"wght" ${S.text.wght}`; };
 const fontStack = () => { const f = fontInfo(S.text.font); return `"${f.n}", ${f.mono ? 'monospace' : f.serif ? 'serif' : f.script ? 'cursive' : 'sans-serif'}`; };
 const fontPx = () => S.text.size * lineScale();
 function syncText() {
@@ -556,7 +556,7 @@ function placeText() {
   Object.assign(textBox.style, {
     left: r.x + t.at.x * S.scale + 'px', top: r.y + t.at.y * S.scale + 'px',
     fontFamily: fontStack(), fontSize: fontPx() * S.scale + 'px', color: S.draw.color,
-    fontWeight: f.sys ? (t.wght >= 600 ? 700 : 400) : t.wght, fontStyle: t.italic ? 'italic' : 'normal', fontVariationSettings: variation()
+    fontWeight: f.sys ? (t.wght >= 600 ? 700 : 400) : t.wght, fontStyle: t.italic && !f.flex ? 'italic' : 'normal', fontVariationSettings: variation()
   });
 }
 function startText(p) {
@@ -564,7 +564,7 @@ function startText(p) {
   textBox.textContent = ''; textBox.hidden = false;
   placeText();
   document.fonts.load(`${S.text.wght} 20px ${fontStack()}`, 'Aa Ăâđ').catch(() => {});
-  requestAnimationFrame(() => textBox.focus());
+  textBox.focus();
 }
 function cancelText() { if (!textBox) return; textBox.hidden = true; textBox.textContent = ''; S.text.at = null; }
 function commitText() {
@@ -595,7 +595,7 @@ function rasterText(txt, at) {
   layer.style.fontVariationSettings = variation();
   document.body.appendChild(layer);
   const c = layer.getContext('2d');
-  c.font = `${t.italic ? 'italic ' : ''}${w} ${px}px ${fontStack()}`; c.fillStyle = S.draw.color; c.textBaseline = 'alphabetic';
+  c.font = `${t.italic && !f.flex ? 'italic ' : ''}${w} ${px}px ${fontStack()}`; c.fillStyle = S.draw.color; c.textBaseline = 'alphabetic';
   txt.split('\n').forEach((line, i) => c.fillText(line, at.x, at.y + i * lh + base));
   work.getContext('2d').drawImage(layer, 0, 0);
   layer.remove(); probe.remove();
