@@ -528,3 +528,4 @@ img, picture, svg, canvas { -webkit-user-drag: none; user-select: none; -webkit-
 #textBox[hidden] { display: none; }
 #stage.texting, #stage.texting #view { cursor: text; }
 #textOpts .p-label:first-child { margin-top: 22px; }
+.fmtrow { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 18px; }

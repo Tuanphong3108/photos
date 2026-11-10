@@ -10,7 +10,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 /* ============================================================
    Biểu tượng: Material Symbols (font con, gọi bằng mã điểm)
    ============================================================ */
-const SYM = {"info":59534,"share":59405,"zoom_out":59648,"zoom_in":59647,"crop_rotate":58423,"resize":63239,"tune":58409,"draw":59206,"undo":57702,"redo":57690,"more_vert":58836,"arrow_drop_down":58821,"chevron_left":58376,"chevron_right":58377,"lock":59533,"lock_open":59544,"rotate_left":58393,"rotate_right":58394,"flip":58344,"ink_highlighter":59089,"ink_eraser":59088,"ink_pen":59091,"edit":57680,"broken_image":58285,"folder_open":58056,"image":57937,"check":58826,"close":57676,"photo_library":58387,"add_photo_alternate":58430,"print":58709,"save":57697,"content_paste":57679,"aspect_ratio":59483,"crop":58302,"restart_alt":61523,"document_scanner":58874,"palette":58295,"keyboard":58130,"help":59527,"description":59507,"open_in_new":59541,"save_as":60256,"file_open":60147,"delete":59506,"refresh":58837,"arrow_back":58820,"arrow_forward":58824,"colorize":58296,"menu_book":59929,"gif_box":59299,"text_fields":57954};
+const SYM = {"info":59534,"share":59405,"zoom_out":59648,"zoom_in":59647,"crop_rotate":58423,"resize":63239,"tune":58409,"draw":59206,"undo":57702,"redo":57690,"more_vert":58836,"arrow_drop_down":58821,"chevron_left":58376,"chevron_right":58377,"lock":59533,"lock_open":59544,"rotate_left":58393,"rotate_right":58394,"flip":58344,"ink_highlighter":59089,"ink_eraser":59088,"ink_pen":59091,"edit":57680,"broken_image":58285,"folder_open":58056,"image":57937,"check":58826,"close":57676,"photo_library":58387,"add_photo_alternate":58430,"print":58709,"save":57697,"content_paste":57679,"aspect_ratio":59483,"crop":58302,"restart_alt":61523,"document_scanner":58874,"palette":58295,"keyboard":58130,"help":59527,"description":59507,"open_in_new":59541,"save_as":60256,"file_open":60147,"delete":59506,"refresh":58837,"arrow_back":58820,"arrow_forward":58824,"colorize":58296,"menu_book":59929,"gif_box":59299,"text_fields":57954,"format_bold":57912,"format_italic":57919};
 const sym = n => String.fromCodePoint(SYM[n]);
 const lineIcon = w => `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><line x1="6" y1="18" x2="18" y2="6" stroke="currentColor" stroke-width="${w}" stroke-linecap="round"/></svg>`;
 const paintIcons = (root = document) => $$('md-icon[data-i]', root).forEach(el => { el.textContent = sym(el.dataset.i); });
@@ -46,7 +46,7 @@ const S = {
   anim: false, animUrl: '',
   exif: null,
   draw: { tool: 'pen', sizeIdx: 2, color: '#000000' },
-  text: { font: 'Google Sans Flex', size: 40, wght: 400, rond: 0, at: null }
+  text: { font: 'Google Sans Flex', size: 40, wght: 400, rond: 0, italic: false, at: null }
 };
 const cur = () => S.H[S.hi];
 const isDirty = () => S.hi > 0;
@@ -534,6 +534,8 @@ var textBox = $('#textBox');
 const fSel = $('#fontSel');
 fSel.innerHTML = FONTS.map(f => `<md-select-option value="${f.n}"${f.n === S.text.font ? ' selected' : ''}><div slot="headline" style="font-family:'${f.n}'">${f.n}</div></md-select-option>`).join('');
 fSel.addEventListener('change', () => { S.text.font = fSel.value; const f = fontInfo(S.text.font); S.text.wght = clamp(S.text.wght, f.w[0], f.w[1]); syncText(); });
+$('#btnBold').onclick = () => { const f = fontInfo(S.text.font); S.text.wght = clamp(S.text.wght >= 600 ? 400 : 700, f.w[0], f.w[1]); syncText(); };
+$('#btnItalic').onclick = () => { S.text.italic = !S.text.italic; syncText(); };
 $('#tSize').addEventListener('input', e => { S.text.size = +e.target.value; syncText(); });
 $('#tWght').addEventListener('input', e => { S.text.wght = +e.target.value; syncText(); });
 $('#tRond').addEventListener('input', e => { S.text.rond = +e.target.value; syncText(); });
@@ -545,6 +547,7 @@ function syncText() {
   const w = $('#tWght'); w.min = f.w[0]; w.max = f.w[1]; w.value = clamp(t.wght, f.w[0], f.w[1]);
   $('#rondRow').hidden = !f.flex;
   fSel.value = t.font;
+  $('#btnBold').classList.toggle('on', t.wght >= 600); $('#btnItalic').classList.toggle('on', t.italic);
   placeText();
 }
 function placeText() {
@@ -553,7 +556,7 @@ function placeText() {
   Object.assign(textBox.style, {
     left: r.x + t.at.x * S.scale + 'px', top: r.y + t.at.y * S.scale + 'px',
     fontFamily: fontStack(), fontSize: fontPx() * S.scale + 'px', color: S.draw.color,
-    fontWeight: f.sys ? (t.wght >= 600 ? 700 : 400) : t.wght, fontVariationSettings: variation()
+    fontWeight: f.sys ? (t.wght >= 600 ? 700 : 400) : t.wght, fontStyle: t.italic ? 'italic' : 'normal', fontVariationSettings: variation()
   });
 }
 function startText(p) {
@@ -592,7 +595,7 @@ function rasterText(txt, at) {
   layer.style.fontVariationSettings = variation();
   document.body.appendChild(layer);
   const c = layer.getContext('2d');
-  c.font = `${w} ${px}px ${fontStack()}`; c.fillStyle = S.draw.color; c.textBaseline = 'alphabetic';
+  c.font = `${t.italic ? 'italic ' : ''}${w} ${px}px ${fontStack()}`; c.fillStyle = S.draw.color; c.textBaseline = 'alphabetic';
   txt.split('\n').forEach((line, i) => c.fillText(line, at.x, at.y + i * lh + base));
   work.getContext('2d').drawImage(layer, 0, 0);
   layer.remove(); probe.remove();
