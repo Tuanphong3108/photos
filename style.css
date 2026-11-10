@@ -484,6 +484,18 @@ md-dialog {
 md-dialog { --md-dialog-container-max-height: min(640px, calc(100vh - 48px)); }
 .dlg-body kbd { white-space: nowrap; }
 
+/* ---- Đổi tên tệp ---- */
+#fileName { cursor: text; border-radius: 12px; padding: 4px 10px; margin: 0 0 0 -10px; transition: background-color .2s var(--emph); }
+#fileName:hover { background: var(--md-sys-color-surface-container-high); }
+#app:not([data-state="image"]) #fileName { pointer-events: none; cursor: default; }
+#renameField {
+  width: min(320px, 100%); margin-left: -4px;
+  --md-outlined-text-field-container-shape: var(--r-m);
+  --md-outlined-text-field-top-space: 8px; --md-outlined-text-field-bottom-space: 8px;
+  --md-outlined-text-field-input-text-size: 16px;
+  animation: pop .35s var(--spring) both;
+}
+
 /* ---- Không cho kéo ảnh ra ngoài ---- */
 img, picture, svg, canvas { -webkit-user-drag: none; user-select: none; -webkit-user-select: none; }
 #topbar, #stage, #panel button, md-icon, .center-msg { user-select: none; -webkit-user-select: none; }

@@ -661,6 +661,64 @@ function go(d) {
 $('#navPrev').onclick = () => go(-1);
 $('#navNext').onclick = () => go(1);
 
+/* ---- Đổi tên tệp (nhấp vào tên ở góc trên bên trái; ẩn phần đuôi) ---- */
+const nameEl = $('#fileName'), renameF = $('#renameField');
+let renaming = false;
+const splitName = n => { const d = n.lastIndexOf('.'); return d > 0 ? [n.slice(0, d), n.slice(d)] : [n, '']; };
+function startRename() {
+  const f = S.files[S.idx];
+  if (renaming || !f || app.dataset.state !== 'image') return;
+  renaming = true;
+  renameF.value = splitName(f.name)[0];
+  nameEl.hidden = true; $('#fileCount').hidden = true; renameF.hidden = false;
+  requestAnimationFrame(() => { renameF.focus(); if (renameF.select) renameF.select(); });
+}
+async function endRename(commit) {
+  if (!renaming) return;
+  renaming = false;
+  const v = renameF.value;
+  renameF.hidden = true; nameEl.hidden = false; $('#fileCount').hidden = false;
+  if (commit) await renameCurrent(v);
+}
+async function renameCurrent(raw) {
+  const f = S.files[S.idx]; if (!f) return false;
+  const [stem, ext] = splitName(f.name), base = raw.trim();
+  if (!base || base === stem) return false;
+  if (/[\\/:*?"<>|\u0000-\u001f]/.test(base) || /^\.+$/.test(base) || base.length + ext.length > 255) { toast('Tên tệp không hợp lệ'); return false; }
+  const name = base + ext, old = f.name;
+  try {
+    if (f.handle) {
+      const h = f.handle;
+      if (f.dir && name.toLowerCase() !== old.toLowerCase()) {
+        let exists = true;
+        try { await f.dir.getFileHandle(name); } catch (e) { if (e.name === 'NotFoundError') exists = false; else throw e; }
+        if (exists) { toast('Đã có tệp trùng tên'); return false; }
+      }
+      if (h.queryPermission && (await h.queryPermission({ mode: 'readwrite' })) !== 'granted') {
+        if ((await h.requestPermission({ mode: 'readwrite' })) !== 'granted') throw new Error('perm');
+      }
+      if (typeof h.move === 'function') await h.move(name);
+      else if (f.dir) {
+        const blob = await h.getFile(), nh = await f.dir.getFileHandle(name, { create: true });
+        const w = await nh.createWritable(); await w.write(blob); await w.close();
+        await f.dir.removeEntry(old); f.handle = nh;
+      } else throw new Error('unsupported');
+    }
+  } catch (e) { toast('Không thể đổi tên tệp này'); return false; }
+  f.name = name;
+  if (f.file) f.file = new File([f.file], name, { type: f.file.type, lastModified: f.file.lastModified });
+  updateUI(); updateInfo(); toast('Đã đổi tên');
+  return true;
+}
+nameEl.addEventListener('click', startRename);
+nameEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startRename(); } });
+renameF.addEventListener('keydown', e => {
+  e.stopPropagation();
+  if (e.key === 'Enter') { e.preventDefault(); endRename(true); }
+  else if (e.key === 'Escape') { e.preventDefault(); endRename(false); }
+});
+renameF.addEventListener('focusout', () => endRename(true));
+
 /* ---- Xóa ảnh ---- */
 const canDelete = () => { const f = S.files[S.idx]; return !!(f && f.handle && typeof f.handle.remove === 'function'); };
 async function deleteCurrent() {
@@ -693,7 +751,7 @@ $('#btnDelete').onclick = deleteCurrent;
 
 async function listDir(dh) {
   const out = [];
-  for await (const h of dh.values()) if (h.kind === 'file' && isImgName(h.name)) out.push({ handle: h, name: h.name });
+  for await (const h of dh.values()) if (h.kind === 'file' && isImgName(h.name)) out.push({ handle: h, name: h.name, dir: dh });
   return out.sort(natural);
 }
 const PICK_TYPES = [{ description: 'Ảnh', accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.jfif', '.webp', '.gif', '.bmp', '.avif', '.svg', '.ico'] } }];
@@ -944,6 +1002,7 @@ const HELP_HTML = `
 <h3>Chỉnh sửa ảnh</h3>
 <p>Chọn ảnh rồi dùng các biểu tượng trên thanh công cụ:</p>
 <ul>
+  <li><b>Đổi tên:</b> chọn tên tệp ở góc trên bên trái (hoặc nhấn <kbd>F2</kbd>), nhập tên mới rồi nhấn <kbd>Enter</kbd>. Phần đuôi tệp được giữ nguyên.</li>
   <li><b>Cắt và xoay:</b> kéo khung để cắt, chọn tỷ lệ khung hình, xoay 90° hoặc lật ngang / dọc rồi chọn <b>Áp dụng</b>.</li>
   <li><b>Đổi kích thước:</b> nhập chiều rộng và chiều cao. Bật / tắt khóa tỷ lệ khung hình để giữ hoặc thay đổi tỷ lệ.</li>
   <li><b>Ánh sáng và màu sắc:</b> kéo thanh trượt để chỉnh độ phơi sáng, độ tương phản và độ bão hòa.</li>
@@ -1016,7 +1075,9 @@ function toast(msg) {
    ============================================================ */
 document.addEventListener('keydown', e => {
   if ($('#dlg').open) return;
-  const mod = e.ctrlKey || e.metaKey, typing = /^(INPUT|TEXTAREA)$/.test(e.target.tagName) && e.target.type !== 'range';
+  const inner = (e.composedPath && e.composedPath()[0]) || e.target;
+  const mod = e.ctrlKey || e.metaKey, typing = /^(INPUT|TEXTAREA)$/.test(inner.tagName) && inner.type !== 'range';
+  const onRange = inner.type === 'range';
   const k = e.key.toLowerCase();
   if (mod && k === 's') { e.preventDefault(); saveAs(); return; }
   if (mod && k === 'o') { e.preventDefault(); pickFiles(); return; }
@@ -1028,8 +1089,9 @@ document.addEventListener('keydown', e => {
   if (k === 'escape') { if (moreMenu.open || saveMenu.open) closeMenus(); else if (S.tool) setTool(S.tool); return; }
   if (app.dataset.state !== 'image' && app.dataset.state !== 'error') return;
   if (k === 'delete') { deleteCurrent(); return; }
-  if (k === 'arrowright' && e.target.type !== 'range') go(1);
-  else if (k === 'arrowleft' && e.target.type !== 'range') go(-1);
+  if (k === 'arrowright' && !onRange) go(1);
+  else if (k === 'arrowleft' && !onRange) go(-1);
+  else if (k === 'f2') startRename();
   else if (k === '+' || k === '=') zoomBy(1.25);
   else if (k === '-') zoomBy(1 / 1.25);
   else if (k === '0') zoomAt(S.fit);

@@ -24,7 +24,8 @@
   <!-- ============ Thanh công cụ ============ -->
   <header id="topbar">
     <div class="tb-left">
-      <h1 id="fileName"></h1>
+      <h1 id="fileName" tabindex="0" role="button" data-tip="Đổi tên" aria-label="Đổi tên tệp"></h1>
+      <md-outlined-text-field id="renameField" hidden aria-label="Tên tệp (không gồm phần đuôi)" spellcheck="false" autocomplete="off"></md-outlined-text-field>
       <span id="fileCount"></span>
     </div>
 
