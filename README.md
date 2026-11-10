@@ -127,11 +127,12 @@ Không cần Node.js hay build tool phức tạp.
 
 ## 📝 Giấy phép (License)
 
-Dự án được phát hành theo MIT License.
+Thông tin giấy phép được hiển thị trực tiếp trong hộp thoại **Giấy phép** của Photos.
 
-### Thành phần bên thứ ba (Third-party Licenses)
-
-Photos sử dụng các thành phần và tài nguyên bên thứ ba. Thông tin về giấy phép và ghi nhận tác giả được liệt kê trong THIRD_PARTY_LICENSES.
+- **Photos** — Giấy phép MIT © 2026 Phong VN
+- **Material Web Components (@material/web)** — Giấy phép Apache 2.0
+- **Material Symbols** — Giấy phép Apache 2.0
+- **Google Sans Flex** — SIL Open Font License 1.1
 
 ---
 
