@@ -1,4 +1,4 @@
-const CACHE = 'photos-v3';
+const CACHE = 'photos-v4';
 const ASSETS = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'vendor/mwc.js', 'fonts/gsf-latin.woff2', 'fonts/gsf-vietnamese.woff2', 'fonts/symbols-subset.woff2', 'images/error.png', 'images/error-dark.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {

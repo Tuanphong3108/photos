@@ -465,3 +465,21 @@ md-dialog {
 /* Nút khóa tỷ lệ: không dùng nền tonal */
 #btnLock, #btnLock[data-on="true"] { background: none; border-radius: 20px; --md-icon-button-icon-color: var(--md-sys-color-on-surface); }
 #btnLock[data-on="false"] { opacity: .65; }
+
+/* ---- Ảnh động (GIF...) ---- */
+#gifView { position: absolute; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+
+/* ---- Color Picker ---- */
+.hexrow { display: flex; align-items: center; gap: 8px; }
+.hexrow md-outlined-text-field { flex: 1; min-width: 0; width: auto; }
+#btnEyedrop { flex: none; --md-filled-tonal-icon-button-container-width: 56px; --md-filled-tonal-icon-button-container-height: 56px; --md-filled-tonal-icon-button-container-shape: 18px; }
+
+/* ---- Hộp thoại trợ giúp ---- */
+.dlg-body h3 { margin: 22px 0 6px; font-size: 16px; font-weight: 600; color: var(--md-sys-color-on-surface); }
+.dlg-body h3:first-child { margin-top: 0; }
+.dlg-body p { margin: 0 0 8px; }
+.dlg-body ul { margin: 0; padding-left: 20px; }
+.dlg-body li { margin: 6px 0; }
+.dlg-body b { color: var(--md-sys-color-on-surface); font-weight: 600; }
+md-dialog { --md-dialog-container-max-height: min(640px, calc(100vh - 48px)); }
+.dlg-body kbd { white-space: nowrap; }

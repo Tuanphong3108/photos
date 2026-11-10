@@ -66,13 +66,7 @@
           <md-menu-item id="miSaveAs"><div slot="headline">Lưu dưới dạng</div><div slot="end" class="kbd">Ctrl + S</div></md-menu-item>
           <md-menu-item id="miOpen"><div slot="headline">Mở...</div><div slot="end" class="kbd">Ctrl + O</div></md-menu-item>
           <md-menu-item id="miOpenDir"><div slot="headline">Mở thư mục...</div></md-menu-item>
-          <md-sub-menu>
-            <md-menu-item slot="item" id="miHelp"><div slot="headline">Trợ giúp</div><md-icon slot="end" data-i="chevron_right"></md-icon></md-menu-item>
-            <md-menu slot="menu" id="helpMenu" anchor-corner="start-end" menu-corner="start-start">
-              <md-menu-item id="miKeys"><div slot="headline">Phím tắt</div></md-menu-item>
-              <md-menu-item id="miAbout"><div slot="headline">Giới thiệu Photos</div></md-menu-item>
-            </md-menu>
-          </md-sub-menu>
+          <md-menu-item id="miHelp"><div slot="headline">Trợ giúp</div></md-menu-item>
           <md-menu-item id="miLicense"><div slot="headline">Giấy phép</div></md-menu-item>
         </md-menu>
       </span>
@@ -182,7 +176,10 @@
         <div class="picker" id="picker" hidden>
           <div id="svBox"><div id="svThumb"></div></div>
           <div id="hueBar"><div id="hueThumb"></div></div>
-          <md-outlined-text-field id="hexIn" label="Hệ lục phân" value="#000000" spellcheck="false" autocomplete="off"></md-outlined-text-field>
+          <div class="hexrow">
+            <md-outlined-text-field id="hexIn" label="Hệ lục phân" value="#000000" spellcheck="false" autocomplete="off"></md-outlined-text-field>
+            <md-filled-tonal-icon-button id="btnEyedrop" data-tip="Color Picker: lấy màu từ bất kỳ đâu trên màn hình" aria-label="Color Picker" hidden><md-icon data-i="colorize"></md-icon></md-filled-tonal-icon-button>
+          </div>
         </div>
       </section>
     </aside>

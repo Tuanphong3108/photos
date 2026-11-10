@@ -10,7 +10,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 /* ============================================================
    Biểu tượng: Material Symbols (font con, gọi bằng mã điểm)
    ============================================================ */
-const SYM = {"info":59534,"share":59405,"zoom_out":59648,"zoom_in":59647,"crop_rotate":58423,"resize":63239,"tune":58409,"draw":59206,"undo":57702,"redo":57690,"more_vert":58836,"arrow_drop_down":58821,"chevron_left":58376,"chevron_right":58377,"lock":59533,"lock_open":59544,"rotate_left":58393,"rotate_right":58394,"flip":58344,"ink_highlighter":59089,"ink_eraser":59088,"ink_pen":59091,"edit":57680,"broken_image":58285,"folder_open":58056,"image":57937,"check":58826,"close":57676,"photo_library":58387,"add_photo_alternate":58430,"print":58709,"save":57697,"content_paste":57679,"aspect_ratio":59483,"crop":58302,"restart_alt":61523,"document_scanner":58874,"palette":58295,"keyboard":58130,"help":59527,"description":59507,"open_in_new":59541,"save_as":60256,"file_open":60147,"delete":59506,"refresh":58837,"arrow_back":58820,"arrow_forward":58824};
+const SYM = {"info":59534,"share":59405,"zoom_out":59648,"zoom_in":59647,"crop_rotate":58423,"resize":63239,"tune":58409,"draw":59206,"undo":57702,"redo":57690,"more_vert":58836,"arrow_drop_down":58821,"chevron_left":58376,"chevron_right":58377,"lock":59533,"lock_open":59544,"rotate_left":58393,"rotate_right":58394,"flip":58344,"ink_highlighter":59089,"ink_eraser":59088,"ink_pen":59091,"edit":57680,"broken_image":58285,"folder_open":58056,"image":57937,"check":58826,"close":57676,"photo_library":58387,"add_photo_alternate":58430,"print":58709,"save":57697,"content_paste":57679,"aspect_ratio":59483,"crop":58302,"restart_alt":61523,"document_scanner":58874,"palette":58295,"keyboard":58130,"help":59527,"description":59507,"open_in_new":59541,"save_as":60256,"file_open":60147,"delete":59506,"refresh":58837,"arrow_back":58820,"arrow_forward":58824,"colorize":58296,"menu_book":59929,"gif_box":59299};
 const sym = n => String.fromCodePoint(SYM[n]);
 const lineIcon = w => `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><line x1="6" y1="18" x2="18" y2="6" stroke="currentColor" stroke-width="${w}" stroke-linecap="round"/></svg>`;
 const paintIcons = (root = document) => $$('md-icon[data-i]', root).forEach(el => { el.textContent = sym(el.dataset.i); });
@@ -26,6 +26,9 @@ const vctx = view.getContext('2d');
 const checker = document.createElement('div');
 checker.id = 'checker';
 stage.insertBefore(checker, view);
+const gifImg = document.createElement('img');
+gifImg.id = 'gifView'; gifImg.alt = ''; gifImg.draggable = false; gifImg.hidden = true;
+stage.insertBefore(gifImg, view);
 
 const zeroAdj = { exp: 0, con: 0, sat: 0 };
 const S = {
@@ -40,6 +43,7 @@ const S = {
   liveAdj: null,
   stroke: null,
   token: 0,
+  anim: false, animUrl: '',
   exif: null,
   draw: { tool: 'pen', sizeIdx: 2, color: '#000000' }
 };
@@ -156,6 +160,15 @@ function clampPan() {
 function render() {
   if (!S.H.length || app.dataset.state !== 'image') return;
   const e = cur(), r = rect(), x = vctx;
+  if (S.anim) {
+    /* Ảnh động (GIF, APNG, WebP động): để trình duyệt tự phát bằng <img> */
+    Object.assign(gifImg.style, { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px', imageRendering: S.scale >= 3 ? 'pixelated' : 'auto' });
+    Object.assign(checker.style, { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px', display: 'block' });
+    stage.classList.toggle('zoomed', S.scale > S.fit * 1.001);
+    $('#btnZoomOut').disabled = S.scale <= S.fit * 1.001;
+    $('#btnZoomIn').disabled = S.scale >= 32;
+    return;
+  }
   x.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
   x.clearRect(0, 0, S.sw, S.sh);
   x.imageSmoothingEnabled = S.scale < 3; x.imageSmoothingQuality = 'high';
@@ -202,14 +215,16 @@ function afterChange() {
 }
 function updateUI() {
   const st = app.dataset.state, img = st === 'image', dirty = isDirty(), drawing = S.tool === 'draw';
+  const edit = img && !S.anim;
   $$('#tbView md-icon-button').forEach(b => { b.disabled = !img; });
-  $$('.js-undo').forEach(b => { b.disabled = !(img && S.hi > 0); });
-  $$('.js-redo').forEach(b => { b.disabled = !(img && S.hi < S.H.length - 1); });
+  ['btnCrop', 'btnResize', 'btnAdjust', 'btnDraw'].forEach(id => { $('#' + id).disabled = !edit; });
+  $$('.js-undo').forEach(b => { b.disabled = !(edit && S.hi > 0); });
+  $$('.js-redo').forEach(b => { b.disabled = !(edit && S.hi < S.H.length - 1); });
   $('#tbView').hidden = drawing; $('#tbDraw').hidden = !drawing;
   $('#btnCancel').hidden = !(img && dirty && !drawing);
   $('#saveGroup').hidden = !(img && dirty && !drawing);
   $('#btnCloseDraw').hidden = !drawing;
-  ['miPrint', 'miSaveAs'].forEach(id => { $('#' + id).disabled = !img; });
+  $('#miPrint').disabled = !img; $('#miSaveAs').disabled = !edit;
   const map = { info: 'btnInfo', crop: 'btnCrop', resize: 'btnResize', adjust: 'btnAdjust', draw: 'btnDraw' };
   Object.entries(map).forEach(([t, id]) => { const b = $('#' + id); b.dataset.on = S.tool === t; b.setAttribute('aria-pressed', S.tool === t); });
   const f = S.files[S.idx];
@@ -223,8 +238,13 @@ function updateUI() {
 function setState(s) {
   app.dataset.state = s;
   if (s !== 'image') { checker.style.display = 'none'; vctx.clearRect(0, 0, view.width, view.height); }
-  view.hidden = s !== 'image';
+  syncMedia();
   updateUI();
+}
+function syncMedia() {
+  const img = app.dataset.state === 'image';
+  view.hidden = !img || S.anim;
+  gifImg.hidden = !img || !S.anim;
 }
 
 /* ============================================================
@@ -232,6 +252,7 @@ function setState(s) {
    ============================================================ */
 function setTool(t) {
   if (S.tool === t) t = '';
+  if (S.anim && t && t !== 'info') { toast('Ảnh động chỉ có thể xem, chưa chỉnh sửa được'); return; }
   if (S.stroke) strokeCancel();
   S.tool = t; app.dataset.tool = t;
   $('#panel').hidden = !t;
@@ -435,6 +456,13 @@ $('#hexIn').addEventListener('input', e => {
   if (/^#[0-9a-f]{6}$/i.test(v)) { S.draw.color = v.toLowerCase(); syncDraw(); syncPicker(true); }
 });
 $('#hexIn').addEventListener('change', () => { $('#hexIn').value = S.draw.color; });
+/* Color Picker: lấy màu từ bất kỳ đâu trên màn hình (EyeDropper API, Chrome/ChromeOS) */
+const eyeBtn = $('#btnEyedrop');
+if ('EyeDropper' in window) eyeBtn.hidden = false;
+eyeBtn.onclick = async () => {
+  try { const r = await new window.EyeDropper().open(); setColor(r.sRGBHex); }
+  catch (e) { /* người dùng hủy (Esc) */ }
+};
 function showTab(custom) {
   $('#tabPalette').selected = !custom; $('#tabCustom').selected = custom;
   $('#palette').hidden = custom; $('#picker').hidden = !custom;
@@ -575,6 +603,20 @@ async function confirmDiscard() {
   return r === 'discard';
 }
 
+async function isAnimated(file) {
+  if (/gif/i.test(file.type || '') || /\.gif$/i.test(file.name)) return true;
+  try {
+    const b = new Uint8Array(await file.slice(0, 65536).arrayBuffer());
+    const find = (txt, from = 0, to = b.length) => {
+      const t = [...txt].map(c => c.charCodeAt(0));
+      for (let i = from; i <= to - t.length; i++) { let ok = true; for (let k = 0; k < t.length; k++) if (b[i + k] !== t[k]) { ok = false; break; } if (ok) return i; }
+      return -1;
+    };
+    if (find('RIFF', 0, 4) === 0 && find('WEBP', 8, 12) === 8) return find('ANIM', 12, 512) > 0;
+    if (b[0] === 0x89 && find('PNG', 1, 4) === 1) { const a = find('acTL'), d = find('IDAT'); return a > 0 && (d < 0 || a < d); }
+  } catch (e) { /* coi như ảnh tĩnh */ }
+  return false;
+}
 async function openIndex(i, force) {
   if (!force && S.H.length && !(await confirmDiscard())) return;
   const token = ++S.token, f = S.files[i];
@@ -595,6 +637,12 @@ async function openIndex(i, force) {
   if (src.close) src.close();
   S.H = [{ c, a: null, adj: { ...zeroAdj } }]; S.hi = 0;
   S.lastW = S.lastH = 0; S.ratio = 'free';
+  const anim = await isAnimated(file);
+  if (token !== S.token) return;
+  if (S.animUrl) { URL.revokeObjectURL(S.animUrl); S.animUrl = ''; gifImg.removeAttribute('src'); }
+  S.anim = anim;
+  if (anim) { S.animUrl = URL.createObjectURL(file); gifImg.src = S.animUrl; }
+  if (S.anim && S.tool && S.tool !== 'info') setTool(S.tool);
   setState('image');
   afterChange(); fitView();
   if (S.tool === 'crop') resetCrop();
@@ -787,6 +835,7 @@ async function save() {
 }
 async function saveAs() {
   if (app.dataset.state !== 'image') return;
+  if (S.anim) { toast('Ảnh động chỉ có thể xem'); return; }
   const f = S.files[S.idx], base = f.name.replace(/\.[^.]+$/, ''), m0 = extMime(f.name) || 'image/png';
   try {
     if (window.showSaveFilePicker) {
@@ -840,16 +889,55 @@ $('#miSaveAs').onclick = () => { closeMenus(); saveAs(); };
 $('#miSaveAsDd').onclick = () => { closeMenus(); saveAs(); };
 $('#miOpen').onclick = () => { closeMenus(); pickFiles(); };
 $('#miOpenDir').onclick = () => { closeMenus(); pickDir(); };
-$('#miKeys').onclick = () => {
+const HELP_URL = 'https://support.google.com/chromebook/answer/1751068?hl=vi&ref_topic=12016120&sjid=16665206169942355344-NC';
+const HELP_HTML = `
+<p>Bạn có thể mở và chỉnh sửa cơ bản các ảnh đã lưu trên thiết bị của mình.</p>
+
+<h3>Mở ảnh</h3>
+<ul>
+  <li>Chọn biểu tượng <b>Thêm</b> (⋮) rồi chọn <b>Mở...</b> (<kbd>Ctrl + O</kbd>) để chọn một hoặc nhiều ảnh, hoặc <b>Mở thư mục...</b> để duyệt cả thư mục.</li>
+  <li>Kéo thả ảnh hoặc thư mục vào cửa sổ, hoặc dán ảnh từ bộ nhớ tạm (<kbd>Ctrl + V</kbd>).</li>
+  <li>Sau khi cài Photos thành ứng dụng, bạn có thể nhấp chuột phải vào ảnh trong ứng dụng Files rồi chọn <b>Mở bằng Photos</b>.</li>
+  <li>Để chuyển giữa các ảnh, dùng nút mũi tên hai bên, phím <kbd>←</kbd> / <kbd>→</kbd> hoặc vuốt ngang.</li>
+</ul>
+
+<h3>Xem ảnh</h3>
+<ul>
+  <li><b>Thu phóng:</b> dùng biểu tượng Phóng to / Thu nhỏ, phím <kbd>+</kbd> / <kbd>−</kbd>, <kbd>Ctrl</kbd> + cuộn chuột hoặc chụm hai ngón. Nhấp đúp để phóng to hoặc quay về vừa khung (<kbd>0</kbd>). Khi đã phóng to, kéo ảnh để di chuyển.</li>
+  <li><b>Thông tin:</b> chọn biểu tượng Thông tin (<kbd>I</kbd>) để xem tên, loại, dung lượng, ngày sửa đổi, kích thước và dữ liệu EXIF của ảnh (nếu có).</li>
+</ul>
+
+<h3>Chỉnh sửa ảnh</h3>
+<p>Chọn ảnh rồi dùng các biểu tượng trên thanh công cụ:</p>
+<ul>
+  <li><b>Cắt và xoay:</b> kéo khung để cắt, chọn tỷ lệ khung hình, xoay 90° hoặc lật ngang / dọc rồi chọn <b>Áp dụng</b>.</li>
+  <li><b>Đổi kích thước:</b> nhập chiều rộng và chiều cao. Bật / tắt khóa tỷ lệ khung hình để giữ hoặc thay đổi tỷ lệ.</li>
+  <li><b>Ánh sáng và màu sắc:</b> kéo thanh trượt để chỉnh độ phơi sáng, độ tương phản và độ bão hòa.</li>
+  <li><b>Chú thích:</b> vẽ bằng bút, bút đánh dấu hoặc dùng tẩy để xóa nét đã vẽ. Chọn kích thước nét và màu từ bảng màu, hoặc chọn <b>Tuỳ chỉnh</b> để nhập mã màu hay dùng <b>Color Picker</b> lấy màu từ bất kỳ đâu trên màn hình. Chọn <b>Đóng</b> khi vẽ xong.</li>
+  <li><b>Hoàn tác và làm lại:</b> dùng biểu tượng Hoàn tác / Làm lại (<kbd>Ctrl + Z</kbd> / <kbd>Ctrl + Shift + Z</kbd>).</li>
+</ul>
+
+<h3>Lưu, in và chia sẻ</h3>
+<ul>
+  <li>Sau khi chỉnh sửa, chọn <b>Lưu</b> để ghi vào tệp gốc, hoặc <b>Hủy chỉnh sửa</b> để bỏ mọi thay đổi.</li>
+  <li><b>Lưu dưới dạng</b> (<kbd>Ctrl + S</kbd>) cho phép đặt tên mới và chọn định dạng PNG, JPEG hoặc WebP.</li>
+  <li><b>In:</b> chọn biểu tượng Thêm (⋮) rồi chọn <b>In</b> (<kbd>Ctrl + P</kbd>).</li>
+  <li><b>Chia sẻ:</b> chọn biểu tượng Chia sẻ để gửi ảnh qua các ứng dụng khác, hoặc sao chép ảnh vào bộ nhớ tạm nếu thiết bị không hỗ trợ chia sẻ.</li>
+</ul>
+
+<h3>Lưu ý</h3>
+<ul>
+  <li>Ảnh động (GIF, APNG, WebP động) chỉ có thể xem, các công cụ chỉnh sửa sẽ bị làm xám.</li>
+  <li>Một số định dạng như HEIC hiện chưa mở được.</li>
+</ul>`;
+$('#miHelp').onclick = async () => {
   closeMenus();
-  const rows = [['← / →', 'Ảnh trước / ảnh sau'], ['+ / −', 'Phóng to / thu nhỏ'], ['0', 'Vừa khung hình'], ['Ctrl + cuộn', 'Thu phóng'], ['Nhấp đúp', 'Phóng to / vừa khung'],
-    ['I', 'Thông tin'], ['Ctrl + Z', 'Hoàn tác'], ['Ctrl + Shift + Z', 'Làm lại'], ['Ctrl + S', 'Lưu dưới dạng'], ['Ctrl + O', 'Mở'], ['Ctrl + P', 'In'], ['Esc', 'Đóng công cụ']];
-  dialog('Phím tắt', `<table>${rows.map(r => `<tr><td><kbd>${esc(r[0])}</kbd></td><td>${esc(r[1])}</td></tr>`).join('')}</table>`, [{ label: 'Đóng', value: 'ok' }]);
+  const r = await dialog('Mở và chỉnh sửa ảnh', HELP_HTML, [{ label: 'Xem bài gốc của Google', value: 'web' }, { label: 'Đóng', value: 'ok' }]);
+  if (r === 'web') window.open(HELP_URL, '_blank', 'noopener,noreferrer');
 };
-$('#miAbout').onclick = () => { closeMenus(); dialog('Photos', 'Trình xem và chỉnh sửa ảnh kiểu ChromeOS.<br>Phiên bản 1.0.0', [{ label: 'Đóng', value: 'ok' }]); };
 $('#miLicense').onclick = () => {
   closeMenus();
-  dialog('Giấy phép', '<pre>Photos — Giấy phép MIT\n© 2026 Tuanphong3108\n\nBiểu tượng: Material Icons của Google, theo Giấy phép Apache 2.0.</pre>', [{ label: 'Đóng', value: 'ok' }]);
+  dialog('Giấy phép', '<pre>Photos — Giấy phép MIT\n© 2026 Tuanphong3108\n\nThành phần bên thứ ba:\n• Material Web Components (@material/web) — Giấy phép Apache 2.0\n• Material Symbols — Giấy phép Apache 2.0\n• Google Sans Flex — SIL Open Font License 1.1</pre>', [{ label: 'Đóng', value: 'ok' }]);
 };
 function dialog(title, body, actions) {
   return new Promise(res => {
