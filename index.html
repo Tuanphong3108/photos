@@ -41,6 +41,8 @@
       <span class="sep"></span>
       <md-icon-button class="js-undo" data-tip="Hoàn tác" aria-label="Hoàn tác"><md-icon data-i="undo"></md-icon></md-icon-button>
       <md-icon-button class="js-redo" data-tip="Làm lại" aria-label="Làm lại"><md-icon data-i="redo"></md-icon></md-icon-button>
+      <span class="sep"></span>
+      <md-icon-button id="btnDelete" data-tip="Xóa" aria-label="Xóa"><md-icon data-i="delete"></md-icon></md-icon-button>
     </div>
 
     <div class="toolbar" id="tbDraw" hidden>
@@ -89,7 +91,7 @@
 
       <!-- Trạng thái trống -->
       <div class="center-msg" id="empty">
-        <div class="logo" aria-hidden="true"><img src="icons/icon-192.png" alt="" width="112" height="112"></div>
+        <div class="logo" aria-hidden="true"><img src="icons/icon-192.png" alt="" width="112" height="112" draggable="false"></div>
         <h2>Photos</h2>
         <p>Kéo thả ảnh hoặc thư mục vào đây, hoặc dán ảnh từ bộ nhớ tạm.</p>
         <div class="row">
@@ -105,7 +107,7 @@
       <div class="center-msg" id="error">
         <picture class="err-img">
           <source srcset="images/error-dark.png" media="(prefers-color-scheme: dark)">
-          <img src="images/error.png" alt="" width="200" height="200" decoding="async">
+          <img src="images/error.png" alt="" width="200" height="200" decoding="async" draggable="false">
         </picture>
         <h2 id="errTitle">Không thể mở ảnh này</h2>
         <p id="errText"></p>

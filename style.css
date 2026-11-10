@@ -483,3 +483,7 @@ md-dialog {
 .dlg-body b { color: var(--md-sys-color-on-surface); font-weight: 600; }
 md-dialog { --md-dialog-container-max-height: min(640px, calc(100vh - 48px)); }
 .dlg-body kbd { white-space: nowrap; }
+
+/* ---- Không cho kéo ảnh ra ngoài ---- */
+img, picture, svg, canvas { -webkit-user-drag: none; user-select: none; -webkit-user-select: none; }
+#topbar, #stage, #panel button, md-icon, .center-msg { user-select: none; -webkit-user-select: none; }

@@ -218,6 +218,7 @@ function updateUI() {
   const edit = img && !S.anim;
   $$('#tbView md-icon-button').forEach(b => { b.disabled = !img; });
   ['btnCrop', 'btnResize', 'btnAdjust', 'btnDraw'].forEach(id => { $('#' + id).disabled = !edit; });
+  $('#btnDelete').disabled = !(img && canDelete());
   $$('.js-undo').forEach(b => { b.disabled = !(edit && S.hi > 0); });
   $$('.js-redo').forEach(b => { b.disabled = !(edit && S.hi < S.H.length - 1); });
   $('#tbView').hidden = drawing; $('#tbDraw').hidden = !drawing;
@@ -660,6 +661,36 @@ function go(d) {
 $('#navPrev').onclick = () => go(-1);
 $('#navNext').onclick = () => go(1);
 
+/* ---- Xóa ảnh ---- */
+const canDelete = () => { const f = S.files[S.idx]; return !!(f && f.handle && typeof f.handle.remove === 'function'); };
+async function deleteCurrent() {
+  const f = S.files[S.idx];
+  if (!f || app.dataset.state !== 'image') return;
+  if (!canDelete()) { toast('Không thể xóa ảnh này vì Photos không có quyền truy cập tệp'); return; }
+  const r = await dialog('Xóa ảnh này?', `<p>Tệp <b>${esc(f.name)}</b> sẽ bị xóa khỏi thiết bị. Bạn không thể hoàn tác thao tác này.</p>`,
+    [{ label: 'Hủy', value: 'cancel' }, { label: 'Xóa', value: 'delete', danger: true }]);
+  if (r !== 'delete') return;
+  try {
+    const h = f.handle;
+    if (h.queryPermission && (await h.queryPermission({ mode: 'readwrite' })) !== 'granted') {
+      if ((await h.requestPermission({ mode: 'readwrite' })) !== 'granted') throw new Error('perm');
+    }
+    await h.remove();
+  } catch (e) { toast('Không thể xóa tệp'); return; }
+  const idx = S.idx;
+  S.files.splice(idx, 1);
+  S.H = []; S.hi = -1;
+  toast('Đã xóa ảnh');
+  if (S.files.length) { openIndex(Math.min(idx, S.files.length - 1), true); return; }
+  /* hết ảnh: về màn hình trống */
+  S.idx = -1; S.iw = S.ih = S.lastW = S.lastH = 0; S.token++;
+  if (S.animUrl) { URL.revokeObjectURL(S.animUrl); S.animUrl = ''; gifImg.removeAttribute('src'); }
+  S.anim = false;
+  if (S.tool) setTool(S.tool);
+  setState('empty');
+}
+$('#btnDelete').onclick = deleteCurrent;
+
 async function listDir(dh) {
   const out = [];
   for await (const h of dh.values()) if (h.kind === 'file' && isImgName(h.name)) out.push({ handle: h, name: h.name });
@@ -694,6 +725,9 @@ $('#fileInput').addEventListener('change', e => {
 });
 ['btnOpenEmpty', 'btnErrOpen'].forEach(id => $('#' + id).onclick = pickFiles);
 $('#btnOpenDirEmpty').onclick = pickDir;
+
+/* Không cho kéo ảnh / phần tử ra ngoài (tránh bóng mờ của Chrome khi kéo) */
+document.addEventListener('dragstart', e => { if (!(e.target.closest && e.target.closest('input, textarea, md-outlined-text-field'))) e.preventDefault(); });
 
 /* Kéo thả */
 let dragDepth = 0;
@@ -922,6 +956,7 @@ const HELP_HTML = `
   <li>Sau khi chỉnh sửa, chọn <b>Lưu</b> để ghi vào tệp gốc, hoặc <b>Hủy chỉnh sửa</b> để bỏ mọi thay đổi.</li>
   <li><b>Lưu dưới dạng</b> (<kbd>Ctrl + S</kbd>) cho phép đặt tên mới và chọn định dạng PNG, JPEG hoặc WebP.</li>
   <li><b>In:</b> chọn biểu tượng Thêm (⋮) rồi chọn <b>In</b> (<kbd>Ctrl + P</kbd>).</li>
+  <li><b>Xóa:</b> chọn biểu tượng Xóa (hoặc phím <kbd>Delete</kbd>) rồi xác nhận để xóa tệp khỏi thiết bị. Chỉ xóa được ảnh mở bằng <b>Mở...</b>, <b>Mở thư mục...</b> hoặc <b>Mở bằng Photos</b>.
   <li><b>Chia sẻ:</b> chọn biểu tượng Chia sẻ để gửi ảnh qua các ứng dụng khác, hoặc sao chép ảnh vào bộ nhớ tạm nếu thiết bị không hỗ trợ chia sẻ.</li>
 </ul>
 
@@ -944,7 +979,11 @@ function dialog(title, body, actions) {
     const d = $('#dlg');
     $('#dlgTitle').textContent = title; $('#dlgBody').innerHTML = body;
     const box = $('#dlgActions'); box.textContent = '';
-    actions.forEach(a => { const b = document.createElement('md-text-button'); b.textContent = a.label; b.onclick = () => d.close(a.value); box.appendChild(b); });
+    actions.forEach(a => {
+      const b = document.createElement('md-text-button'); b.textContent = a.label; b.onclick = () => d.close(a.value);
+      if (a.danger) b.style.setProperty('--md-text-button-label-text-color', 'var(--md-sys-color-error)');
+      box.appendChild(b);
+    });
     d.returnValue = '';
     d.addEventListener('closed', () => res(d.returnValue || null), { once: true });
     d.show();
@@ -988,6 +1027,7 @@ document.addEventListener('keydown', e => {
   if (e.altKey || mod) return;
   if (k === 'escape') { if (moreMenu.open || saveMenu.open) closeMenus(); else if (S.tool) setTool(S.tool); return; }
   if (app.dataset.state !== 'image' && app.dataset.state !== 'error') return;
+  if (k === 'delete') { deleteCurrent(); return; }
   if (k === 'arrowright' && e.target.type !== 'range') go(1);
   else if (k === 'arrowleft' && e.target.type !== 'range') go(-1);
   else if (k === '+' || k === '=') zoomBy(1.25);
