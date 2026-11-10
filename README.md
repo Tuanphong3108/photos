@@ -14,12 +14,14 @@
 
 ## Preview
 
-<!-- Thêm ảnh chụp giao diện tại đây -->
-
-<!-- ![Giao diện Photos](screenshots/1.png) -->
-
-<!-- ![Trình chỉnh sửa ảnh](screenshots/2.png) -->
-
+<p align="center">
+  <img src="Screenshot%202026-11-10%2015.22.14.png" width="49%" alt="Photos screenshot 15.22.14">
+  <img src="Screenshot%202026-11-10%2015.22.37.png" width="49%" alt="Photos screenshot 15.22.37">
+</p>
+<p align="center">
+  <img src="Screenshot%202026-11-10%2015.22.43.png" width="49%" alt="Photos screenshot 15.22.43">
+  <img src="Screenshot%202026-11-10%2015.22.47.png" width="49%" alt="Photos screenshot 15.22.47">
+</p>
 ---
 
 ## 🌟 Tính năng nổi bật
