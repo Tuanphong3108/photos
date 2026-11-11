@@ -1722,7 +1722,7 @@ $('#miHelp').onclick = async () => {
 };
 $('#miLicense').onclick = () => {
   closeMenus();
-  dialog('Giấy phép', '<pre>Photos — Giấy phép MIT\n© 2026 Tuanphong3108\n\nThành phần bên thứ ba:\n• Material Web Components (@material/web) — Giấy phép Apache 2.0\n• Material Symbols — Giấy phép Apache 2.0\n• Google Sans Flex, Roboto, Open Sans, Montserrat, Lora, Playfair Display, Roboto Mono, Dancing Script — SIL Open Font License 1.1</pre>', [{ label: 'Đóng', value: 'ok' }]);
+  dialog('Giấy phép', '<pre>Photos — Giấy phép MIT\n© 2026 Phong VN\n\nThành phần bên thứ ba:\n• Material Web Components (@material/web) — Giấy phép Apache 2.0\n• Material Symbols — Giấy phép Apache 2.0\n• Google Sans Flex, Roboto, Open Sans, Montserrat, Lora, Playfair Display, Roboto Mono, Dancing Script — SIL Open Font License 1.1</pre>', [{ label: 'Đóng', value: 'ok' }]);
 };
 function dialog(title, body, actions) {
   return new Promise(res => {
