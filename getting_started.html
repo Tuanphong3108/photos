@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<title>Bắt đầu - Photos</title>
+<style>
+  @font-face { font-family: "Google Sans Flex"; src: url(fonts/gsf-latin.woff2) format("woff2"); font-weight: 100 1000; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family: "Google Sans Flex"; src: url(fonts/gsf-vietnamese.woff2) format("woff2"); font-weight: 100 1000; font-display: swap; unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB; }
+  @font-face { font-family: "Material Symbols Outlined"; src: url(fonts/symbols-subset.woff2) format("woff2"); font-weight: 100 700; }
+  :root {
+    color-scheme: light dark;
+    --primary:#a8c7fa; --on-primary:#062e6f; --pc:#0842a0; --on-pc:#d3e3fd;
+    --sc:#3e4759; --on-sc:#dae2f9; --surface:#15191f; --on-surface:#e2e2e9; --on-var:#c4c6d0;
+    --c1:#191c22; --c2:#272a31; --c3:#32353c; --outline:#8e9099;
+    --glow:#0842a0;
+    --spring:cubic-bezier(.34,1.56,.64,1); --ease:cubic-bezier(.2,0,0,1);
+    --font:"Google Sans Flex","Google Sans",Roboto,system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --primary:#0b57d0; --on-primary:#fff; --pc:#d3e3fd; --on-pc:#041e49; --sc:#dae2f9; --on-sc:#131c2b;
+      --surface:#f8fafd; --on-surface:#1f1f1f; --on-var:#444746; --c1:#f3f6fc; --c2:#e7ebf3; --c3:#e0e5ee; --outline:#747775; --glow:#d3e3fd; }
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; }
+  body { font-family:var(--font); color:var(--on-surface); background:var(--surface); overflow:hidden; user-select:none; letter-spacing:.1px; }
+  .ms { font-family:"Material Symbols Outlined"; font-weight:400; font-style:normal; line-height:1; display:inline-block; vertical-align:middle; font-variation-settings:"FILL" 1,"wght" 400,"opsz" 24; font-size:24px; }
+  .app { position:fixed; inset:0; display:flex; flex-direction:column; background:radial-gradient(circle at 85% 10%, color-mix(in srgb,var(--glow) 55%,transparent) 0, transparent 55%), var(--surface); }
+  header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px clamp(16px,4vw,40px) 6px; }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .badge { width:44px; height:44px; border-radius:16px; background:var(--pc); color:var(--on-pc); display:grid; place-items:center; }
+  .badge img { width:28px; height:28px; border-radius:8px; display:block; }
+  .brand h1 { margin:0; font-size:16px; font-weight:700; line-height:1.2; } .brand p { margin:0; font-size:12px; color:var(--on-var); }
+  .btn-text { border:none; background:transparent; color:var(--on-var); font:600 13px var(--font); padding:10px 16px; border-radius:19px; cursor:pointer; transition:background .2s, border-radius .3s var(--ease); }
+  .btn-text:hover { background:color-mix(in srgb,var(--primary) 14%,transparent); color:var(--on-surface); border-radius:14px; }
+  .stepper { display:flex; gap:8px; padding:8px clamp(16px,4vw,40px) 0; }
+  .pill { flex:1; height:8px; border-radius:99px; background:var(--c3); position:relative; overflow:hidden; cursor:pointer; transition:flex .4s var(--spring); }
+  .pill.done::after,.pill.active::after { content:""; position:absolute; inset:0; background:var(--primary); border-radius:inherit; }
+  .pill.active { flex:2.4; } .pill.done { opacity:.55; }
+  .meta { display:flex; justify-content:space-between; padding:8px clamp(18px,4vw,42px) 0; font-size:12px; font-weight:600; color:var(--on-var); }
+  .meta b { color:var(--primary); }
+  main { position:relative; flex:1; min-height:0; overflow:hidden; }
+  .slide { position:absolute; inset:0; overflow-y:auto; padding:20px clamp(16px,4vw,40px); display:flex; flex-direction:column; align-items:center; opacity:0; pointer-events:none; transform:translateX(60px) scale(.97); transition:opacity .35s var(--ease), transform .5s var(--spring); }
+  .slide.active { opacity:1; pointer-events:auto; transform:none; } .slide.before { transform:translateX(-60px) scale(.97); }
+  .inner { width:100%; max-width:920px; margin:auto 0; display:flex; flex-direction:column; gap:22px; }
+  .center { align-items:center; text-align:center; }
+  ::-webkit-scrollbar { width:8px; } ::-webkit-scrollbar-thumb { background:var(--c3); border-radius:99px; }
+  .chip { display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px; background:var(--sc); color:var(--on-sc); font-size:12px; font-weight:700; letter-spacing:.4px; }
+  .chip .ms { font-size:18px; color:var(--primary); }
+  h2 { margin:0; font-size:clamp(26px,4.2vw,42px); font-weight:800; line-height:1.1; letter-spacing:-.5px; }
+  .lead { margin:0; font-size:clamp(14px,1.7vw,17px); color:var(--on-var); line-height:1.6; max-width:640px; } .center .lead { margin-inline:auto; }
+  .hero { width:112px; height:112px; border-radius:36px; background:var(--pc); display:grid; place-items:center; margin:0 auto; animation:float 4s ease-in-out infinite; }
+  .hero img { width:68px; height:68px; border-radius:18px; display:block; }
+  @keyframes float { 50% { transform:translateY(-8px) rotate(-3deg); border-radius:44px 30px 44px 30px; } }
+  .grid { display:grid; gap:14px; } .g3 { grid-template-columns:repeat(3,1fr); } .g2 { grid-template-columns:repeat(2,1fr); }
+  .card { background:var(--c1); border-radius:28px; padding:20px; display:flex; flex-direction:column; gap:10px; transition:border-radius .35s var(--ease), transform .3s var(--spring), background .2s; }
+  .card:hover { border-radius:20px; transform:translateY(-3px); background:var(--c2); }
+  .ico { width:48px; height:48px; border-radius:16px; background:var(--pc); color:var(--on-pc); display:grid; place-items:center; }
+  .card h3 { margin:0; font-size:16px; font-weight:700; } .card p { margin:0; font-size:13px; line-height:1.55; color:var(--on-var); }
+  kbd { font:600 12px ui-monospace,Menlo,Consolas,monospace; padding:3px 8px; border-radius:8px; background:var(--c3); color:var(--on-surface); box-shadow:0 2px 0 var(--outline); }
+  .note { display:flex; align-items:center; gap:12px; padding:14px 18px; border-radius:22px; background:var(--sc); color:var(--on-sc); font-size:13px; line-height:1.5; }
+  .note .ms { color:var(--primary); flex-shrink:0; }
+  .keys { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .key { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 18px; border-radius:20px; background:var(--c1); font-size:13px; font-weight:600; }
+  .key .k { display:flex; gap:6px; align-items:center; flex-shrink:0; }
+  footer { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px clamp(16px,4vw,40px) 22px; }
+  .btn { border:none; font:700 14px var(--font); padding:14px 26px; border-radius:25px; cursor:pointer; display:inline-flex; align-items:center; gap:10px; justify-content:center; transition:border-radius .35s var(--ease), transform .25s var(--spring), opacity .2s; }
+  .btn .ms { font-size:20px; } .btn:hover { border-radius:18px; } .btn:active { transform:scale(.95); }
+  .btn.tonal { background:var(--sc); color:var(--on-sc); } .btn.filled { background:var(--primary); color:var(--on-primary); box-shadow:0 8px 24px color-mix(in srgb,var(--primary) 28%,transparent); }
+  .btn[disabled] { opacity:.35; pointer-events:none; }
+  .dots { display:flex; gap:6px; } .dot { width:8px; height:8px; border-radius:99px; background:var(--c3); transition:width .35s var(--spring), background .2s; } .dot.active { width:26px; background:var(--primary); }
+  .pick { align-self:center; }
+  .picked { display:none; align-items:center; gap:10px; padding:12px 18px; border-radius:20px; background:var(--pc); color:var(--on-pc); font-weight:600; font-size:14px; align-self:center; }
+  .picked.show { display:inline-flex; } .picked .ms { color:var(--primary); }
+  @media (max-width:720px) { .g3,.g2,.keys { grid-template-columns:1fr; } .dots { display:none; } .btn { padding:13px 20px; } .hero { width:88px; height:88px; border-radius:30px; } .hero img { width:52px; height:52px; } }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition-duration:.01ms !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand"><div class="badge"><img src="icons/icon-192.png" alt=""></div><div><h1>Photos</h1><p>Hướng dẫn bắt đầu</p></div></div>
+    <button class="btn-text" id="skip">Bỏ qua</button>
+  </header>
+  <div class="stepper" id="stepper"></div>
+  <div class="meta"><span id="count">Bước 1 / 5</span><b id="name">Chào mừng</b></div>
+  <main>
+    <section class="slide center"><div class="inner center">
+      <div class="hero"><img src="icons/icon-192.png" alt=""></div>
+      <h2>Chào mừng đến với Photos</h2>
+      <p class="lead">Trình xem và chỉnh sửa ảnh kiểu ChromeOS Gallery: duyệt ảnh theo thời gian hoặc theo thư mục, chỉnh sửa nhanh, và dùng được cả khi không có mạng. Ảnh luôn ở trên máy bạn, không tải lên đâu cả.</p>
+      <div class="note"><span class="ms" data-ic="lock"></span><span>Mọi thao tác diễn ra ngay trong trình duyệt. Photos chỉ đọc những thư mục mà bạn cho phép.</span></div>
+    </div></section>
+
+    <section class="slide"><div class="inner">
+      <div><span class="chip"><span class="ms" data-ic="add_photo_alternate"></span>Thư viện</span></div>
+      <h2>Thêm ảnh vào Photos</h2>
+      <p class="lead">Chọn thư mục chứa ảnh một lần, Photos sẽ nhớ và hiển thị toàn bộ ảnh trong đó, kể cả thư mục con.</p>
+      <div class="grid g3">
+        <div class="card"><div class="ico"><span class="ms" data-ic="folder_open"></span></div><h3>Thư mục theo dõi</h3><p>Thêm một hoặc nhiều thư mục. Quản lý chúng bất cứ lúc nào ở menu 3 chấm &gt; Quản lý thư mục ảnh.</p></div>
+        <div class="card"><div class="ico"><span class="ms" data-ic="photo_library"></span></div><h3>Thư viện ảnh &amp; Files UI</h3><p>Xem tất cả ảnh sắp theo ngày, hoặc chuyển sang tab Files UI để duyệt theo cây thư mục.</p></div>
+        <div class="card"><div class="ico"><span class="ms" data-ic="drag_pan"></span></div><h3>Kéo &amp; thả</h3><p>Kéo ảnh hoặc cả thư mục vào cửa sổ, hoặc dán ảnh từ clipboard bằng <kbd>Ctrl</kbd> + <kbd>V</kbd>.</p></div>
+      </div>
+      <div class="note"><span class="ms" data-ic="offline_bolt"></span><span>Cài Photos như một ứng dụng để mở ảnh trực tiếp bằng "Mở bằng Photos" trong trình quản lý tệp và dùng offline.</span></div>
+    </div></section>
+
+    <section class="slide"><div class="inner">
+      <div><span class="chip"><span class="ms" data-ic="auto_awesome"></span>Tính năng</span></div>
+      <h2>Xem, tìm và chỉnh sửa</h2>
+      <div class="grid g3">
+        <div class="card"><div class="ico"><span class="ms" data-ic="search"></span></div><h3>Tìm kiếm thông minh</h3><p>Tìm theo tên hoặc ngày tháng: <kbd>2026</kbd>, <kbd>4/2026</kbd>, <kbd>31 8 2025</kbd>. Kéo thanh cuộn sẽ hiện tháng và năm.</p></div>
+        <div class="card"><div class="ico"><span class="ms" data-ic="select_all"></span></div><h3>Chọn nhiều ảnh</h3><p>Bấm "Chọn" để xóa hàng loạt; trong Files UI còn có thể sao chép, cắt và dán giữa các thư mục.</p></div>
+        <div class="card"><div class="ico"><span class="ms" data-ic="fullscreen"></span></div><h3>Xem toàn màn hình</h3><p>Cuộn chuột để phóng to, nhấn <kbd>F</kbd> để vào chế độ toàn màn hình toàn đen.</p></div>
+        <div class="card"><div class="ico"><span class="ms" data-ic="crop_rotate"></span></div><h3>Cắt &amp; xoay</h3><p>Cắt theo tỉ lệ, xoay, lật và đổi kích thước ảnh.</p></div>
+        <div class="card"><div class="ico"><span class="ms" data-ic="tune"></span></div><h3>Điều chỉnh</h3><p>Chỉnh độ sáng, tương phản, màu sắc, hoặc vẽ và tô sáng trực tiếp lên ảnh.</p></div>
+        <div class="card"><div class="ico"><span class="ms" data-ic="text_fields"></span></div><h3>Chèn chữ</h3><p>Thêm văn bản với nhiều phông chữ, đậm, nghiêng và màu tùy chọn.</p></div>
+      </div>
+    </div></section>
+
+    <section class="slide"><div class="inner">
+      <div><span class="chip"><span class="ms" data-ic="keyboard"></span>Phím tắt</span></div>
+      <h2>Điều khiển không cần chuột</h2>
+      <div class="keys">
+        <div class="key"><span>Mở ảnh</span><span class="k"><kbd>Ctrl</kbd><kbd>O</kbd></span></div>
+        <div class="key"><span>Lưu dưới dạng</span><span class="k"><kbd>Ctrl</kbd><kbd>S</kbd></span></div>
+        <div class="key"><span>In</span><span class="k"><kbd>Ctrl</kbd><kbd>P</kbd></span></div>
+        <div class="key"><span>Ảnh trước / sau</span><span class="k"><kbd>←</kbd><kbd>→</kbd></span></div>
+        <div class="key"><span>Phóng to / thu nhỏ</span><span class="k"><kbd>+</kbd><kbd>-</kbd></span></div>
+        <div class="key"><span>Vừa khung hình</span><span class="k"><kbd>0</kbd></span></div>
+        <div class="key"><span>Toàn màn hình</span><span class="k"><kbd>F</kbd></span></div>
+        <div class="key"><span>Thông tin ảnh</span><span class="k"><kbd>I</kbd></span></div>
+        <div class="key"><span>Đổi tên</span><span class="k"><kbd>F2</kbd></span></div>
+        <div class="key"><span>Xóa</span><span class="k"><kbd>Delete</kbd></span></div>
+        <div class="key"><span>Hoàn tác / làm lại</span><span class="k"><kbd>Ctrl</kbd><kbd>Z</kbd><kbd>Y</kbd></span></div>
+        <div class="key"><span>Tìm kiếm</span><span class="k"><kbd>Ctrl</kbd><kbd>F</kbd></span></div>
+      </div>
+    </div></section>
+
+    <section class="slide center"><div class="inner center">
+      <div class="hero"><span class="ms" data-ic="rocket_launch" style="font-size:60px;color:var(--on-pc)"></span></div>
+      <h2>Sẵn sàng rồi!</h2>
+      <p class="lead">Chọn thư mục ảnh ngay bây giờ để bắt đầu, hoặc để sau cũng được, bạn luôn thêm được trong Thư viện ảnh. Có thể xem lại hướng dẫn này ở menu 3 chấm &gt; Hướng dẫn bắt đầu.</p>
+      <button class="btn tonal pick" id="pick"><span class="ms" data-ic="folder_open"></span><span id="pickText">Chọn thư mục ảnh</span></button>
+      <div class="picked" id="picked"><span class="ms" data-ic="check_circle"></span><span id="pickedName"></span></div>
+    </div></section>
+  </main>
+  <footer>
+    <button class="btn tonal" id="back"><span class="ms" data-ic="arrow_back"></span>Quay lại</button>
+    <div class="dots" id="dots"></div>
+    <button class="btn filled" id="next"><span id="nextText">Tiếp theo</span><span class="ms" id="nextIco" data-ic="arrow_forward"></span></button>
+  </footer>
+</div>
+<script>
+(function () {
+  var IC = {"photo_library": 58387, "rocket_launch": 60315, "folder_open": 58056, "drag_pan": 63262, "search": 59574, "select_all": 57698, "edit": 57680, "crop_rotate": 58423, "text_fields": 57954, "tune": 58409, "keyboard": 58130, "fullscreen": 58832, "content_copy": 57677, "offline_bolt": 59698, "auto_awesome": 58975, "arrow_back": 58820, "arrow_forward": 58824, "play_arrow": 57399, "check_circle": 59500, "add_photo_alternate": 58430, "lock": 59533, "share": 59405, "print": 58709, "touch_app": 59667, "lightbulb": 57584};
+  var NAMES = ['Chào mừng', 'Thêm ảnh', 'Tính năng', 'Phím tắt', 'Bắt đầu'];
+  var TOTAL = 5, KEY = 'photos.gsDraft', st = { step: 0 }, picked = [];
+  var $ = function (s) { return document.querySelector(s); }, $$ = function (s) { return [].slice.call(document.querySelectorAll(s)); };
+  function icon(el, n) { el.textContent = IC[n] ? String.fromCodePoint(IC[n]) : ''; }
+  $$('[data-ic]').forEach(function (e) { icon(e, e.dataset.ic); });
+  try { var d = JSON.parse(localStorage.getItem(KEY)); if (d && d.step >= 0 && d.step < TOTAL) st.step = d.step; } catch (e) {}
+  function toParent(m) { try { (window.parent !== window ? window.parent : window).postMessage(m, '*'); } catch (e) {} }
+  var slides = $$('.slide');
+  for (var i = 0; i < TOTAL; i++) {
+    var p = document.createElement('div'); p.className = 'pill'; (function (n) { p.onclick = function () { go(n); }; })(i); $('#stepper').appendChild(p);
+    var t = document.createElement('div'); t.className = 'dot'; $('#dots').appendChild(t);
+  }
+  function ui() {
+    $$('.pill').forEach(function (p, i) { p.classList.toggle('active', i === st.step); p.classList.toggle('done', i < st.step); });
+    $$('.dot').forEach(function (p, i) { p.classList.toggle('active', i === st.step); });
+    slides.forEach(function (s, i) { s.classList.toggle('active', i === st.step); s.classList.toggle('before', i < st.step); if (i === st.step) s.scrollTop = 0; });
+    $('#count').textContent = 'Bước ' + (st.step + 1) + ' / ' + TOTAL; $('#name').textContent = NAMES[st.step];
+    $('#back').disabled = st.step === 0;
+    var last = st.step === TOTAL - 1;
+    $('#nextText').textContent = last ? 'Bắt đầu xem ảnh' : 'Tiếp theo'; icon($('#nextIco'), last ? 'play_arrow' : 'arrow_forward');
+  }
+  function go(n) { st.step = Math.max(0, Math.min(TOTAL - 1, n)); ui(); try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} }
+  function finish() { try { localStorage.removeItem(KEY); } catch (e) {} toParent({ type: 'gs-done', dirs: picked }); }
+  $('#next').onclick = function () { st.step === TOTAL - 1 ? finish() : go(st.step + 1); };
+  $('#back').onclick = function () { go(st.step - 1); };
+  $('#skip').onclick = finish;
+  $('#pick').onclick = async function () {
+    if (!window.showDirectoryPicker) { $('#pickText').textContent = 'Trình duyệt không hỗ trợ chọn thư mục'; return; }
+    try {
+      var h = await window.showDirectoryPicker({ mode: 'readwrite', id: 'photos' });
+      picked.push(h);
+      $('#pickedName').textContent = 'Đã chọn: ' + (picked.map(function (x) { return x.name; }).join(', '));
+      $('#picked').classList.add('show'); $('#pickText').textContent = 'Thêm thư mục khác';
+    } catch (e) {}
+  };
+  window.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' && st.step < TOTAL - 1) go(st.step + 1);
+    else if (e.key === 'ArrowLeft' && st.step > 0) go(st.step - 1);
+  });
+  ui();
+  toParent({ type: 'gs-ready' });
+})();
+</script>
+</body>
+</html>
