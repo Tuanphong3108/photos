@@ -10,7 +10,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 /* ============================================================
    Biểu tượng: Material Symbols (font con, gọi bằng mã điểm)
    ============================================================ */
-const SYM = {"info":59534,"share":59405,"zoom_out":59648,"zoom_in":59647,"crop_rotate":58423,"resize":63239,"tune":58409,"draw":59206,"undo":57702,"redo":57690,"more_vert":58836,"arrow_drop_down":58821,"chevron_left":58376,"chevron_right":58377,"lock":59533,"lock_open":59544,"rotate_left":58393,"rotate_right":58394,"flip":58344,"ink_highlighter":59089,"ink_eraser":59088,"ink_pen":59091,"edit":57680,"broken_image":58285,"folder_open":58056,"image":57937,"check":58826,"close":57676,"photo_library":58387,"add_photo_alternate":58430,"print":58709,"save":57697,"content_paste":57679,"aspect_ratio":59483,"crop":58302,"restart_alt":61523,"document_scanner":58874,"palette":58295,"keyboard":58130,"help":59527,"description":59507,"open_in_new":59541,"save_as":60256,"file_open":60147,"delete":59506,"refresh":58837,"arrow_back":58820,"arrow_forward":58824,"colorize":58296,"menu_book":59929,"gif_box":59299,"text_fields":57954,"format_bold":57912,"format_italic":57919,"folder":58055,"create_new_folder":58060,"fullscreen":58832,"fullscreen_exit":58833,"content_copy":57677};
+const SYM = {"info":59534,"share":59405,"zoom_out":59648,"zoom_in":59647,"crop_rotate":58423,"resize":63239,"tune":58409,"draw":59206,"undo":57702,"redo":57690,"more_vert":58836,"arrow_drop_down":58821,"chevron_left":58376,"chevron_right":58377,"lock":59533,"lock_open":59544,"rotate_left":58393,"rotate_right":58394,"flip":58344,"ink_highlighter":59089,"ink_eraser":59088,"ink_pen":59091,"edit":57680,"broken_image":58285,"folder_open":58056,"image":57937,"check":58826,"close":57676,"photo_library":58387,"add_photo_alternate":58430,"print":58709,"save":57697,"content_paste":57679,"aspect_ratio":59483,"crop":58302,"restart_alt":61523,"document_scanner":58874,"palette":58295,"keyboard":58130,"help":59527,"description":59507,"open_in_new":59541,"save_as":60256,"file_open":60147,"delete":59506,"refresh":58837,"arrow_back":58820,"arrow_forward":58824,"colorize":58296,"menu_book":59929,"gif_box":59299,"text_fields":57954,"format_bold":57912,"format_italic":57919,"folder":58055,"create_new_folder":58060,"fullscreen":58832,"fullscreen_exit":58833,"content_copy":57677,"search":59574,"select_all":57698,"content_cut":57678,"check_circle":59500};
 const sym = n => String.fromCodePoint(SYM[n]);
 const lineIcon = w => `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><line x1="6" y1="18" x2="18" y2="6" stroke="currentColor" stroke-width="${w}" stroke-linecap="round"/></svg>`;
 const paintIcons = (root = document) => $$('md-icon[data-i]', root).forEach(el => { el.textContent = sym(el.dataset.i); });
@@ -236,7 +236,7 @@ function updateUI() {
   $('#navPrev').hidden = !(img && S.idx > 0);
   $('#navNext').hidden = !(img && S.idx < S.files.length - 1);
   document.title = st === 'gallery' ? 'Thư viện ảnh - Photos' : f ? `${f.name} - Photos` : 'Photos';
-  $('#btnBack').hidden = !(S.back && (img || st === 'loading' || st === 'error'));
+  try { syncGalHeader(); } catch (e) { /* GAL chưa khởi tạo */ }
   $('#cropBox').hidden = !(img && S.tool === 'crop');
 }
 function setState(s) {
@@ -801,8 +801,9 @@ async function ensureDir(f) {
   if (!(await same(d))) { toast('Thư mục đã chọn không chứa ảnh này'); return null; }
   return (lastDir = d);
 }
-async function renameCurrent(raw) {
-  const f = S.files[S.idx]; if (!f) return false;
+async function renameCurrent(raw) { return renameFile(S.files[S.idx], raw); }
+async function renameFile(f, raw) {
+  if (!f) return false;
   const [stem, ext] = splitName(f.name), base = raw.trim();
   if (!base || base === stem) return false;
   if (/[\\/:*?"<>|\u0000-\u001f]/.test(base) || /^\.+$/.test(base) || base.length + ext.length > 255) { toast('Tên tệp không hợp lệ'); return false; }
@@ -832,9 +833,10 @@ async function renameCurrent(raw) {
       }
     }
   } catch (e) { toast('Không thể đổi tên tệp này'); return false; }
-  f.name = name;
+  f.name = name; f.nn = null; if (f.path) f.path[f.path.length - 1] = name;
   if (f.file) f.file = new File([f.file], name, { type: f.file.type, lastModified: f.file.lastModified });
   updateUI(); updateInfo(); toast('Đã đổi tên');
+  if (app.dataset.state === 'gallery') renderGallery();
   return true;
 }
 nameEl.addEventListener('click', startRename);
@@ -864,6 +866,7 @@ async function deleteCurrent() {
   } catch (e) { toast('Không thể xóa tệp'); return; }
   const idx = S.idx;
   S.files.splice(idx, 1); GAL.dirty = true;
+  { const gi = GAL.items.indexOf(f); if (gi >= 0) GAL.items.splice(gi, 1); }
   S.H = []; S.hi = -1;
   toast('Đã xóa ảnh');
   if (S.files.length) { openIndex(Math.min(idx, S.files.length - 1), true); return; }
@@ -909,7 +912,7 @@ const idb = (() => {
   return { all: () => tx('readonly', s => s.getAll()), add: h => tx('readwrite', s => s.add({ handle: h })), del: id => tx('readwrite', s => s.delete(id)) };
 })();
 
-const GAL = { dirs: [], items: [], ready: Promise.resolve(), tok: 0, dirty: false, scroll: 0, t: 0 };
+const GAL = { sel: new Set(), selecting: false, clip: null, tree: null, cur: null, dirs: [], items: [], shown: [], tab: 'all', path: [], q: '', ready: Promise.resolve(), tok: 0, dirty: false, scroll: 0, t: 0 };
 const thumbs = new WeakMap();
 const SKIP_DIR = /^(\.|\$RECYCLE\.BIN$|System Volume Information$|node_modules$)/i;
 const gal = $('#gallery'), galGrid = $('#galGrid');
@@ -985,15 +988,84 @@ async function makeThumb(it) {
 const tileIO = new IntersectionObserver(es => es.forEach(e => {
   if (!e.isIntersecting) return;
   const t = e.target; tileIO.unobserve(t);
-  const it = GAL.items[+t.dataset.i]; if (!it) return;
+  const it = GAL.shown[+t.dataset.i]; if (!it) return;
   thumbOf(it).then(r => { const im = t.firstChild; im.src = r.url; im.onload = () => t.classList.add('ready'); }, () => t.classList.add('bad'));
 }), { root: gal, rootMargin: '600px' });
 
+const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').toLowerCase();
+const nameKey = it => it.nn || (it.nn = norm(it.name));
+try { const t = localStorage.getItem('photos.galTab'); if (t === 'files') GAL.tab = 'files'; } catch (e) { /* bỏ qua */ }
+
+/* Tìm theo ngày: "2026", "4/2026", "4-2026", "4 2026", "31 8 2025", "tháng 4 năm 2026"... */
+function parseDateQ(raw) {
+  const t = norm(raw).replace(/\b(thang|nam|ngay)\b/g, ' ').trim();
+  if (!/^\d{1,4}([\/\-.\s]+\d{1,4}){0,2}$/.test(t)) return null;
+  const n = t.split(/[\/\-.\s]+/).map(Number), ok = (d, m) => (!d || (d >= 1 && d <= 31)) && (!m || (m >= 1 && m <= 12));
+  if (n.length === 1) return n[0] >= 1000 ? { y: n[0] } : null;
+  if (n.length === 2) {
+    if (n[1] >= 1000 && ok(0, n[0])) return { m: n[0], y: n[1] };
+    if (n[0] >= 1000 && ok(0, n[1])) return { y: n[0], m: n[1] };
+    if (n[0] <= 31 && n[1] <= 12) return { d: n[0], m: n[1] };
+    return null;
+  }
+  if (n[2] >= 1000 && ok(n[0], n[1])) return { d: n[0], m: n[1], y: n[2] };
+  if (n[0] >= 1000 && ok(n[2], n[1])) return { y: n[0], m: n[1], d: n[2] };
+  return null;
+}
+function makeMatcher(raw) {
+  const s = raw.trim(); if (!s) return null;
+  const q = norm(s), dq = parseDateQ(s);
+  return it => {
+    if (nameKey(it).includes(q)) return true;
+    if (!dq || !it.mtime) return false;
+    const d = new Date(it.mtime);
+    return (!dq.y || d.getFullYear() === dq.y) && (!dq.m || d.getMonth() + 1 === dq.m) && (!dq.d || d.getDate() === dq.d);
+  };
+}
+function buildTree() {
+  const mkNode = name => ({ name, kids: new Map(), imgs: [], count: 0 });
+  const roots = GAL.dirs.map(d => mkNode(d.handle.name));
+  for (const it of GAL.items) {
+    const ri = GAL.dirs.findIndex(d => d.handle === it.root); if (ri < 0) continue;
+    let n = roots[ri]; n.count++;
+    for (const seg of it.path.slice(0, -1)) { let k = n.kids.get(seg); if (!k) n.kids.set(seg, k = mkNode(seg)); n = k; n.count++; }
+    n.imgs.push(it);
+  }
+  if (roots.length === 1) return roots[0];
+  const top = mkNode(''); roots.forEach((r, i) => top.kids.set(i + ':' + r.name, r)); top.count = GAL.items.length; top.virtual = true;
+  return top;
+}
+function resolveNode(tree, path) {
+  let node = tree; const keys = [], trail = [tree];
+  for (const k of path) { const nx = node.kids.get(k); if (!nx) break; node = nx; keys.push(k); trail.push(nx); }
+  return { node, keys, trail };
+}
+function subtree(n, out = []) { out.push(...n.imgs); n.kids.forEach(k => subtree(k, out)); return out; }
+const curNode = () => (GAL.tree && GAL.tab === 'files') ? resolveNode(GAL.tree, GAL.path) : null;
+function canPaste() {
+  const c = curNode();
+  return !!(GAL.clip && c && !c.node.virtual && !GAL.clip.items.every(it => c.node.imgs.includes(it)));
+}
+function syncGalHeader() {
+  const st = app.dataset.state, gs = st === 'gallery', img = st === 'image';
+  const sub = gs && GAL.tab === 'files' && GAL.path.length > 0;
+  app.classList.toggle('fsub', sub);
+  app.classList.toggle('selecting', gs && GAL.selecting);
+  if (sub) { const c = curNode(); $('#galFolder').textContent = c ? c.node.name : ''; }
+  $('#btnBack').hidden = !(sub || (S.back && (img || st === 'loading' || st === 'error')));
+  $('#btnSelect').hidden = !(gs && GAL.shown.length && !GAL.selecting);
+  $('#btnPaste').hidden = !(gs && !GAL.selecting && canPaste());
+  const n = GAL.sel.size, files = GAL.tab === 'files';
+  $('#selCount').textContent = n ? `${n} ảnh đã chọn` : 'Chọn ảnh';
+  $('#selCopy').hidden = $('#selCut').hidden = !files;
+  ['selCopy', 'selCut', 'selDel'].forEach(id => { $('#' + id).disabled = !n; });
+}
 function renderGallery() {
   tileIO.disconnect(); galGrid.textContent = '';
   const none = !GAL.dirs.length, need = GAL.dirs.filter(d => d.ok === false);
   const empty = none || (!GAL.items.length && !need.length);
   $('#galEmpty').hidden = !empty;
+  $('#galBar').hidden = none;
   if (empty) {
     $('#galEmptyTitle').textContent = none ? 'Thư viện ảnh' : 'Chưa có ảnh nào';
     $('#galEmptyText').textContent = none
@@ -1002,20 +1074,221 @@ function renderGallery() {
   }
   $('#galPerm').hidden = !need.length;
   if (need.length) $('#galPermText').textContent = 'Photos cần bạn cấp lại quyền truy cập thư mục: ' + need.map(d => d.handle.name).join(', ');
-  const fmt = new Intl.DateTimeFormat('vi-VN', { month: 'long', year: 'numeric' }), frag = document.createDocumentFragment();
-  let key = null;
-  GAL.items.forEach((it, i) => {
-    let k = it.mtime ? fmt.format(it.mtime) : 'Không rõ ngày';
-    k = k.charAt(0).toUpperCase() + k.slice(1);
-    if (k !== key) { key = k; const hd = document.createElement('h2'); hd.className = 'galHead'; hd.textContent = k; frag.appendChild(hd); }
-    const b = document.createElement('button'); b.className = 'tile'; b.dataset.i = i; b.dataset.tip = it.name; b.setAttribute('aria-label', it.name);
-    const im = document.createElement('img'); im.alt = ''; im.draggable = false; b.appendChild(im);
-    frag.appendChild(b); it.el = b;
+  const tabs = $('#galTabs'), want = GAL.tab === 'files' ? 1 : 0;
+  if (tabs.activeTabIndex !== want) tabs.activeTabIndex = want;
+  $('#galClear').hidden = !GAL.q;
+  const match = makeMatcher(GAL.q), frag = document.createDocumentFragment();
+  const head = t => { const hd = document.createElement('h2'); hd.className = 'galHead'; hd.textContent = t; frag.appendChild(hd); };
+  const addTiles = (list, base = 0) => list.forEach((it, i) => {
+    const b = document.createElement('button'); b.className = 'tile' + (GAL.sel.has(it) ? ' sel' : ''); b.dataset.i = base + i; b.dataset.tip = it.name; b.setAttribute('aria-label', it.name);
+    const im = document.createElement('img'); im.alt = ''; im.draggable = false;
+    const ck = document.createElement('span'); ck.className = 'chk'; ck.innerHTML = '<md-icon data-i="check_circle"></md-icon>';
+    b.append(im, ck); frag.appendChild(b); it.el = b;
   });
+  let shown = [], msg = '';
+  GAL.tree = buildTree();
+  const cur = resolveNode(GAL.tree, GAL.path); GAL.path = cur.keys; GAL.cur = cur;
+  if (GAL.tab === 'files') {
+    const node = cur.node;
+    const cr = document.createElement('div'); cr.className = 'crumbs';
+    cur.trail.forEach((n, idx) => {
+      if (idx) { const ic = document.createElement('md-icon'); ic.dataset.i = 'chevron_right'; cr.appendChild(ic); }
+      const b = document.createElement('button'); b.className = 'crumb'; b.dataset.d = idx;
+      b.textContent = n.name || 'Thư mục theo dõi'; cr.appendChild(b);
+    });
+    frag.appendChild(cr);
+    if (match) {
+      shown = subtree(node).filter(match).sort(natural);
+      if (shown.length) { head(`Kết quả trong “${node.name || 'Thư mục theo dõi'}” (${shown.length})`); addTiles(shown); }
+      else msg = `Không tìm thấy ảnh nào khớp “${GAL.q.trim()}”.`;
+    } else {
+      if (node.kids.size) {
+        head(node.virtual ? 'Thư mục theo dõi' : 'Thư mục');
+        const fg = document.createElement('div'); fg.className = 'folderGrid';
+        [...node.kids.entries()].sort((a, b) => natural({ name: a[1].name }, { name: b[1].name })).forEach(([k, f]) => {
+          const b = document.createElement('button'); b.className = 'folder'; b.dataset.k = k;
+          b.innerHTML = `<md-icon data-i="folder"></md-icon><span class="fn"><b>${esc(f.name)}</b><span>${f.count} ảnh</span></span>`;
+          fg.appendChild(b);
+        });
+        frag.appendChild(fg);
+      }
+      shown = node.imgs.slice().sort(natural);
+      if (shown.length) { if (node.kids.size) head('Ảnh'); addTiles(shown); }
+      if (!node.kids.size && !shown.length && !empty) msg = 'Thư mục này không có ảnh.';
+    }
+  } else {
+    shown = match ? GAL.items.filter(match) : GAL.items;
+    if (match && !shown.length) msg = `Không tìm thấy ảnh nào khớp “${GAL.q.trim()}”.`;
+    const fmt = new Intl.DateTimeFormat('vi-VN', { month: 'long', year: 'numeric' });
+    let key = null;
+    shown.forEach((it, i) => {
+      let k = match ? 'Kết quả (' + shown.length + ')' : it.mtime ? fmt.format(it.mtime) : 'Không rõ ngày';
+      k = k.charAt(0).toUpperCase() + k.slice(1);
+      if (k !== key) { key = k; head(k); }
+      addTiles([it], i);
+    });
+  }
+  GAL.shown = shown;
+  for (const it of [...GAL.sel]) if (!shown.includes(it)) GAL.sel.delete(it);
+  if (msg && !empty) { const p = document.createElement('div'); p.id = 'galNone'; p.textContent = msg; frag.appendChild(p); }
   galGrid.appendChild(frag);
+  paintIcons(galGrid);
   $$('.tile', galGrid).forEach(t => tileIO.observe(t));
+  syncGalHeader(); requestAnimationFrame(syncScroll);
 }
-galGrid.addEventListener('click', e => { const t = e.target.closest('.tile'); if (t) openFromGallery(+t.dataset.i, t); });
+/* ---- Tab, tìm kiếm, thư mục ---- */
+$('#galTabs').addEventListener('change', e => {
+  GAL.tab = e.target.activeTabIndex === 1 ? 'files' : 'all'; GAL.sel.clear(); GAL.selecting = false;
+  try { localStorage.setItem('photos.galTab', GAL.tab); } catch (err) { /* bỏ qua */ }
+  gal.scrollTop = 0; renderGallery();
+});
+let searchT;
+$('#galSearch').addEventListener('input', e => { GAL.q = e.target.value; clearTimeout(searchT); searchT = setTimeout(() => { gal.scrollTop = 0; renderGallery(); }, 120); });
+$('#galClear').onclick = () => { $('#galSearch').value = ''; GAL.q = ''; renderGallery(); $('#galSearch').focus(); };
+
+
+
+galGrid.addEventListener('click', e => {
+  const t = e.target.closest('.tile'), f = e.target.closest('.folder'), c = e.target.closest('.crumb');
+  if (t) { if (GAL.selecting) toggleSel(GAL.shown[+t.dataset.i], t); else openFromGallery(+t.dataset.i, t); }
+  else if (f) goFolder(GAL.path.concat(f.dataset.k));
+  else if (c) goFolder(GAL.path.slice(0, +c.dataset.d));
+});
+function goFolder(path) { GAL.path = path; GAL.sel.clear(); gal.scrollTop = 0; renderGallery(); }
+const galUp = () => goFolder(GAL.path.slice(0, -1));
+
+/* ---- Chế độ chọn, sao chép / cắt / dán, xóa ---- */
+function toggleSel(it, el) {
+  if (!it) return;
+  if (GAL.sel.has(it)) GAL.sel.delete(it); else GAL.sel.add(it);
+  (el || it.el).classList.toggle('sel', GAL.sel.has(it)); syncGalHeader();
+}
+function setSelecting(on) {
+  GAL.selecting = on; if (!on) { GAL.sel.clear(); $$('.tile.sel', galGrid).forEach(t => t.classList.remove('sel')); }
+  syncGalHeader();
+}
+$('#btnSelect').onclick = () => setSelecting(true);
+$('#selClose').onclick = () => setSelecting(false);
+$('#selAll').onclick = () => {
+  const all = GAL.shown.length && GAL.shown.every(it => GAL.sel.has(it));
+  GAL.shown.forEach(it => { if (all) GAL.sel.delete(it); else GAL.sel.add(it); });
+  $$('.tile', galGrid).forEach(t => t.classList.toggle('sel', GAL.sel.has(GAL.shown[+t.dataset.i]))); syncGalHeader();
+};
+function setClip(mode, items) {
+  if (!items.length) return;
+  GAL.clip = { mode, items: items.slice() };
+  setSelecting(false);
+  toast(`Đã ${mode === 'cut' ? 'cắt' : 'sao chép'} ${items.length} ảnh. Mở thư mục đích rồi bấm Dán`);
+  syncGalHeader();
+}
+$('#selCopy').onclick = () => setClip('copy', [...GAL.sel]);
+$('#selCut').onclick = () => setClip('cut', [...GAL.sel]);
+$('#selDel').onclick = () => deleteItems([...GAL.sel]);
+$('#btnPaste').onclick = () => pasteHere();
+async function curDir() {
+  const c = curNode(); if (!c || c.node.virtual) return null;
+  let ri = 0, rest = c.keys;
+  if (GAL.dirs.length > 1) { ri = parseInt(c.keys[0], 10); rest = c.keys.slice(1); }
+  let dh = GAL.dirs[ri].handle;
+  for (const k of rest) dh = await dh.getDirectoryHandle(k);
+  return dh;
+}
+async function uniqueName(dir, name) {
+  const [stem, ext] = splitName(name);
+  for (let i = 0; i < 1000; i++) {
+    const n = i ? `${stem} (${i})${ext}` : name;
+    try { await dir.getFileHandle(n); } catch (e) { if (e.name === 'NotFoundError') return n; throw e; }
+  }
+  return name;
+}
+async function pasteHere() {
+  const clip = GAL.clip; if (!clip) return;
+  let dir; try { dir = await curDir(); } catch (e) { dir = null; }
+  if (!dir) { toast('Không thể dán vào thư mục này'); return; }
+  let ok = 0, fail = 0;
+  for (const it of clip.items) {
+    try {
+      if (clip.mode === 'cut' && await it.dir.isSameEntry(dir)) continue;
+      const file = await it.handle.getFile(), name = await uniqueName(dir, it.name);
+      const nh = await dir.getFileHandle(name, { create: true }), w = await nh.createWritable();
+      await w.write(file); await w.close();
+      if (clip.mode === 'cut') await it.dir.removeEntry(it.name);
+      ok++;
+    } catch (e) { fail++; }
+  }
+  if (clip.mode === 'cut') GAL.clip = null;
+  toast(fail ? `Đã dán ${ok} ảnh, ${fail} ảnh lỗi` : `Đã dán ${ok} ảnh`);
+  syncGalHeader(); await refreshGallery();
+}
+async function deleteItems(list) {
+  if (!list.length) return;
+  const one = list.length === 1;
+  const r = await dialog(one ? 'Xóa ảnh này?' : `Xóa ${list.length} ảnh?`,
+    one ? `<p>Tệp <b>${esc(list[0].name)}</b> sẽ bị xóa khỏi thiết bị. Bạn không thể hoàn tác thao tác này.</p>` : `<p>${list.length} ảnh đã chọn sẽ bị xóa khỏi thiết bị. Bạn không thể hoàn tác thao tác này.</p>`,
+    [{ label: 'Hủy', value: 'cancel' }, { label: 'Xóa', value: 'delete', danger: true }]);
+  if (r !== 'delete') return;
+  let ok = 0;
+  for (const it of list) {
+    try { await it.dir.removeEntry(it.name); ok++; GAL.items.splice(GAL.items.indexOf(it), 1); GAL.sel.delete(it); }
+    catch (e) { /* bỏ qua tệp lỗi */ }
+  }
+  if (GAL.clip) GAL.clip.items = GAL.clip.items.filter(i => GAL.items.includes(i));
+  if (GAL.clip && !GAL.clip.items.length) GAL.clip = null;
+  toast(ok === list.length ? `Đã xóa ${ok} ảnh` : `Đã xóa ${ok}/${list.length} ảnh`);
+  if (!GAL.sel.size) GAL.selecting = false;
+  renderGallery();
+}
+async function renameItemDialog(it) {
+  const [stem] = splitName(it.name);
+  const r = await dialog('Đổi tên', `<md-outlined-text-field class="ren" id="renDlg" label="Tên tệp" value="${esc(stem)}" suffix-text="${esc(splitName(it.name)[1])}"></md-outlined-text-field>`,
+    [{ label: 'Hủy', value: 'cancel' }, { label: 'Đổi tên', value: 'ok' }]);
+  const v = $('#renDlg') && $('#renDlg').value;
+  if (r === 'ok' && v != null) await renameFile(it, v);
+}
+async function infoItemDialog(it) {
+  let file = null, dims = '';
+  try { file = await it.handle.getFile(); const bm = await createImageBitmap(file); dims = `${bm.width} × ${bm.height} px`; bm.close(); } catch (e) { /* bỏ qua */ }
+  const rows = [['Tên', it.name], ['Thư mục', [it.root && it.root.name, ...(it.path || []).slice(0, -1)].filter(Boolean).join(' / ')],
+    ['Loại', file && (file.type || '')], ['Dung lượng', file && fmtSize(file.size)], ['Ngày sửa đổi', file && file.lastModified ? new Date(file.lastModified).toLocaleString('vi-VN') : ''], ['Kích thước', dims]]
+    .filter(r => r[1]);
+  dialog('Thông tin ảnh', `<dl class="kv">${rows.map(r => `<dt>${r[0]}</dt><dd>${esc(String(r[1]))}</dd>`).join('')}</dl>`, [{ label: 'Đóng', value: 'ok' }]);
+}
+
+/* ---- Thanh cuộn tùy chỉnh (kéo hiện "Tháng ... năm ...") ---- */
+const gsc = $('#galScroll'), gth = $('#galThumb'), gbub = $('#galBubble');
+let gscT, gdrag = false, goff = 0;
+function syncScroll() {
+  const H = gal.clientHeight, SH = gal.scrollHeight, show = app.dataset.state === 'gallery' && SH > H + 4;
+  gsc.style.visibility = show ? 'visible' : 'hidden';
+  if (!show) return;
+  const tr = gsc.clientHeight, th = Math.max(56, tr * H / SH), max = SH - H;
+  gth.style.height = th + 'px';
+  gth.style.transform = `translateY(${max ? (gal.scrollTop / max) * (tr - th) : 0}px)`;
+}
+function wakeScroll() { gsc.classList.add('on'); clearTimeout(gscT); gscT = setTimeout(() => gsc.classList.remove('on'), 1100); }
+function dateBubble() {
+  const tiles = $$('.tile', galGrid); if (!tiles.length) { gbub.classList.remove('has'); return; }
+  const top = gal.scrollTop + 64; let lo = 0, hi = tiles.length - 1;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (tiles[mid].offsetTop + tiles[mid].offsetHeight > top) hi = mid; else lo = mid + 1; }
+  const it = GAL.shown[+tiles[lo].dataset.i], d = it && it.mtime ? new Date(it.mtime) : null;
+  gbub.textContent = d ? `Tháng ${d.getMonth() + 1} năm ${d.getFullYear()}` : 'Không rõ ngày';
+  gbub.classList.add('has');
+}
+function dragTo(e) {
+  const r = gsc.getBoundingClientRect(), th = gth.offsetHeight, y = clamp(e.clientY - r.top - goff, 0, Math.max(1, r.height - th));
+  gal.scrollTop = (y / Math.max(1, r.height - th)) * (gal.scrollHeight - gal.clientHeight);
+  dateBubble();
+}
+gsc.addEventListener('pointerdown', e => {
+  gsc.setPointerCapture(e.pointerId); gdrag = true; gsc.classList.add('drag', 'on'); clearTimeout(gscT);
+  goff = e.target.closest('#galThumb') ? e.clientY - gth.getBoundingClientRect().top : gth.offsetHeight / 2;
+  dragTo(e); e.preventDefault();
+});
+gsc.addEventListener('pointermove', e => { if (gdrag) dragTo(e); });
+const endDrag = () => { if (!gdrag) return; gdrag = false; gsc.classList.remove('drag'); wakeScroll(); };
+gsc.addEventListener('pointerup', endDrag); gsc.addEventListener('pointercancel', endDrag);
+gal.addEventListener('scroll', () => { syncScroll(); if (!gdrag) wakeScroll(); }, { passive: true });
+new ResizeObserver(() => syncScroll()).observe(gal);
 
 /* ---- Vào / ra khỏi thư viện ---- */
 const fitBox = (wr, ratio, pad) => {
@@ -1026,11 +1299,11 @@ const fitBox = (wr, ratio, pad) => {
 const px = b => ({ left: b.left + 'px', top: b.top + 'px', width: b.width + 'px', height: b.height + 'px' });
 let opening = false;
 async function openFromGallery(i, tile) {
-  if (opening || !GAL.items[i]) return;
+  if (opening || !GAL.shown[i]) return;
   opening = true;
   try {
     GAL.scroll = gal.scrollTop;
-    S.files = GAL.items; S.back = true;
+    S.files = GAL.shown; S.back = true;
     const im = tile.firstChild, wr = $('#workspace').getBoundingClientRect();
     let fly = null, anim = null;
     if (tile.classList.contains('ready') && im.naturalWidth) {
@@ -1058,9 +1331,9 @@ function toGallery() {
   if (S.animUrl) { URL.revokeObjectURL(S.animUrl); S.animUrl = ''; gifImg.removeAttribute('src'); }
   S.anim = false; S.exif = null;
   if (S.tool) setTool(S.tool);
-  const cur = S.files[S.idx], was = S.files === GAL.items;
+  const cur = S.files[S.idx], was = S.files === GAL.shown;
   setState('gallery');
-  if (was && GAL.dirty) { GAL.dirty = false; renderGallery(); }
+  if (GAL.dirty) { GAL.dirty = false; renderGallery(); }
   requestAnimationFrame(() => {
     gal.scrollTop = GAL.scroll;
     const t = was && cur && cur.el && cur.el.isConnected ? cur.el : null;
@@ -1073,7 +1346,7 @@ async function goBack() {
   commitText();
   toGallery();
 }
-$('#btnBack').onclick = goBack;
+$('#btnBack').onclick = () => { if (app.dataset.state === 'gallery') galUp(); else goBack(); };
 
 /* ---- Thêm / quản lý thư mục theo dõi ---- */
 async function addDir() {
@@ -1468,6 +1741,15 @@ document.addEventListener('keydown', e => {
   if (mod && k === 's') { e.preventDefault(); saveAs(); return; }
   if (mod && k === 'o') { e.preventDefault(); pickFiles(); return; }
   if (mod && k === 'p') { e.preventDefault(); doPrint(); return; }
+  if (app.dataset.state === 'gallery' && !typing) {
+    if (k === 'escape' && GAL.selecting) { setSelecting(false); return; }
+    if (k === 'delete' && GAL.selecting && GAL.sel.size) { deleteItems([...GAL.sel]); return; }
+    if (mod && k === 'a' && GAL.selecting) { e.preventDefault(); $('#selAll').click(); return; }
+    if (mod && (k === 'c' || k === 'x') && GAL.selecting && GAL.tab === 'files' && GAL.sel.size) { e.preventDefault(); setClip(k === 'c' ? 'copy' : 'cut', [...GAL.sel]); return; }
+    if (mod && k === 'v' && canPaste()) { e.preventDefault(); pasteHere(); return; }
+    if ((k === 'backspace' || (e.altKey && k === 'arrowleft')) && GAL.tab === 'files' && GAL.path.length) { e.preventDefault(); galUp(); return; }
+  }
+  if (app.dataset.state === 'gallery' && GAL.dirs.length && ((mod && k === 'f') || (!typing && k === '/'))) { e.preventDefault(); $('#galSearch').focus(); return; }
   if (typing) return;
   if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if (mod && k === 'y') { e.preventDefault(); redo(); return; }
@@ -1538,8 +1820,23 @@ function ctxItems(e) {
   const st = app.dataset.state, tile = e.target.closest && e.target.closest('.tile');
   const it = (icon, label, fn, opt = {}) => ({ icon, label, fn, ...opt });
   if (st === 'gallery') {
-    const out = [];
-    if (tile) out.push(it('image', 'Mở', () => openFromGallery(+tile.dataset.i, tile)), 'sep');
+    const files = GAL.tab === 'files', out = [];
+    const it0 = tile ? GAL.shown[+tile.dataset.i] : null;
+    if (it0 && GAL.selecting) {
+      const targets = GAL.sel.has(it0) ? [...GAL.sel] : [it0], n = targets.length;
+      out.push(it(GAL.sel.has(it0) ? 'check_circle' : 'check_circle', GAL.sel.has(it0) ? 'Bỏ chọn' : 'Chọn', () => toggleSel(it0, tile)), 'sep');
+      if (files) out.push(it('content_copy', `Sao chép${n > 1 ? ' (' + n + ')' : ''}`, () => setClip('copy', targets)), it('content_cut', `Cắt${n > 1 ? ' (' + n + ')' : ''}`, () => setClip('cut', targets)));
+      out.push(it('delete', `Xóa${n > 1 ? ' (' + n + ')' : ''}`, () => deleteItems(targets), { danger: true }));
+      return out;
+    }
+    if (it0) {
+      out.push(it('image', 'Mở', () => openFromGallery(+tile.dataset.i, tile)), 'sep');
+      if (files) out.push(it('content_copy', 'Sao chép', () => setClip('copy', [it0])), it('content_cut', 'Cắt', () => setClip('cut', [it0])), 'sep');
+      out.push(it('edit', 'Đổi tên', () => renameItemDialog(it0)), it('info', 'Thông tin ảnh', () => infoItemDialog(it0)),
+        it('check_circle', 'Chọn', () => { setSelecting(true); toggleSel(it0, tile); }), 'sep',
+        it('delete', 'Xóa', () => deleteItems([it0]), { danger: true }), 'sep');
+    }
+    if (files && canPaste()) out.push(it('content_paste', 'Dán', pasteHere), 'sep');
     out.push(it('refresh', 'Làm mới', () => refreshGallery()), it('create_new_folder', 'Thêm thư mục ảnh...', pickDir), it('folder_open', 'Quản lý thư mục ảnh', manageDirs), 'sep', it('', 'Mở ảnh...', pickFiles));
     return out;
   }

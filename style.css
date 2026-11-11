@@ -614,3 +614,98 @@ img, picture, svg, canvas { -webkit-user-drag: none; user-select: none; -webkit-
   transition: opacity .25s var(--emph), transform .4s var(--spring), visibility 0s .4s;
 }
 #fsExit.show { opacity: 1; transform: none; pointer-events: auto; visibility: visible; transition: opacity .2s var(--emph), transform .45s var(--spring), visibility 0s; }
+
+/* ---- Thanh tìm kiếm + tab thư viện ---- */
+#galBar {
+  position: sticky; top: -4px; z-index: 4; margin: 0 -16px; padding: 8px 16px 4px; background: var(--stage-bg);
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px;
+}
+#galBar[hidden] { display: none; }
+#galTabs { --md-primary-tab-container-color: transparent; --md-divider-color: transparent; background: transparent; }
+#galSearch {
+  --md-outlined-text-field-container-shape: 28px; --md-outlined-text-field-top-space: 10px; --md-outlined-text-field-bottom-space: 10px;
+  width: min(360px, 100%); flex: 0 1 360px;
+}
+.crumbs { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 2px; margin: 8px 0 4px; }
+.crumb { border: 0; background: none; font: inherit; font-size: 15px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); padding: 6px 12px; border-radius: 999px; cursor: pointer; transition: background-color .2s; }
+.crumb:hover { background: var(--md-sys-color-surface-container-high); }
+.crumb:last-child { color: var(--md-sys-color-on-surface); cursor: default; }
+.crumbs md-icon { --md-icon-size: 18px; color: var(--md-sys-color-outline); }
+.folderGrid { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.folder {
+  display: flex; align-items: center; gap: 14px; text-align: left; padding: 0 16px; height: 64px; border: 0; cursor: pointer; font: inherit;
+  background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container);
+  border-radius: 20px; transition: border-radius .3s var(--spring), transform .3s var(--spring);
+}
+.folder:hover { border-radius: 28px; }
+.folder:active { transform: scale(.97); }
+.folder:focus-visible { outline: 3px solid var(--md-sys-color-primary); outline-offset: 2px; }
+.folder md-icon { flex: none; }
+.folder .fn { min-width: 0; display: flex; flex-direction: column; }
+.folder .fn b { font-weight: 500; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder .fn span { font-size: 12px; opacity: .75; }
+#galNone { grid-column: 1 / -1; text-align: center; padding: 64px 16px; color: var(--md-sys-color-on-surface-variant); font-size: 15px; }
+
+/* ---- Lưới topbar: 3 cột cố định, các thanh công cụ chồng cùng một ô ---- */
+.tb-left { grid-column: 1; grid-row: 1; }
+#tbView, #tbDraw, #tbSel { grid-column: 2; grid-row: 1; }
+.tb-right { grid-column: 3; grid-row: 1; }
+
+/* ---- Tiêu đề thư mục (Files UI) + nút quay lại ---- */
+#galFolder {
+  position: absolute; left: 36px; top: 50%; translate: 0 -50%; margin: 0; font-size: 28px; font-weight: 500; font-variation-settings: "ROND" 100, "wght" 500;
+  white-space: nowrap; max-width: 46vw; overflow: hidden; text-overflow: ellipsis;
+  transform: translateY(140%); opacity: 0; visibility: hidden; pointer-events: none;
+  transition: transform .45s var(--emph), opacity .25s var(--emph), visibility 0s .45s;
+}
+#app[data-state="gallery"].fsub #galFolder { transform: none; opacity: 1; visibility: visible; transition: transform .5s var(--spring), opacity .3s var(--emph), visibility 0s; }
+#app[data-state="gallery"].fsub #galTitle { transform: translateY(-140%); opacity: 0; visibility: hidden; pointer-events: none; transition: transform .45s var(--emph), opacity .25s var(--emph), visibility 0s .45s; }
+#app[data-state="gallery"] .tb-left > :not(#galTitle):not(#galFolder):not(#btnBack) { opacity: 0; visibility: hidden; pointer-events: none; }
+#app[data-state="gallery"]:not(.fsub) #btnBack { opacity: 0; visibility: hidden; pointer-events: none; }
+#app[data-state="gallery"].fsub #btnBack { opacity: 1; visibility: visible; pointer-events: auto; }
+@media (max-width: 860px) { #app.fsub #galFolder { font-size: 20px; } }
+
+/* ---- Chế độ chọn ---- */
+#tbSel { display: none; }
+#app.selecting #tbSel { display: flex; animation: selIn .5s var(--spring) both; }
+@keyframes selIn { from { opacity: 0; transform: translateY(34px) scale(.94); } to { opacity: 1; transform: none; } }
+#selCount { font-size: 15px; font-weight: 500; min-width: 120px; padding: 0 6px; white-space: nowrap; }
+#app.selecting .tb-right > * { transform: translateY(-40px); opacity: 0; visibility: hidden; pointer-events: none; }
+#app.selecting #galBar { opacity: 0; transform: translateY(-24px); pointer-events: none; }
+#galBar { transition: opacity .3s var(--emph), transform .45s var(--spring); }
+.tb-right > * { transition: transform .45s var(--spring), opacity .25s var(--emph), visibility 0s; }
+.tile .chk {
+  display: none; position: absolute; top: 8px; left: 8px; width: 24px; height: 24px; border-radius: 50%; z-index: 2;
+  border: 2px solid #fff; background: rgb(0 0 0 / .28); color: var(--md-sys-color-on-primary); place-items: center; box-shadow: 0 0 0 1px rgb(0 0 0 / .15);
+}
+.tile .chk md-icon { --md-icon-size: 22px; display: none; margin: -2px; }
+#app.selecting .tile .chk { display: grid; }
+.tile.sel { background: var(--md-sys-color-primary-container); }
+.tile.sel img { transform: scale(.86); border-radius: 12px; }
+.tile.sel .chk { background: var(--md-sys-color-primary); border-color: var(--md-sys-color-primary); }
+.tile.sel .chk md-icon { display: block; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; margin: 0; font-size: 14px; }
+.kv dt { color: var(--md-sys-color-on-surface-variant); }
+.kv dd { margin: 0; word-break: break-word; }
+.dlg-body .ren { width: 100%; margin-top: 8px; }
+
+/* ---- Thanh cuộn tùy chỉnh ---- */
+#gallery { scrollbar-width: none; }
+#gallery::-webkit-scrollbar { display: none; }
+#galScroll {
+  position: absolute; right: 2px; top: 76px; bottom: 12px; width: 22px; z-index: 5; display: none; touch-action: none;
+}
+#app[data-state="gallery"] #galScroll { display: block; }
+#galThumb {
+  position: absolute; right: 4px; width: 6px; border-radius: 999px; min-height: 56px; background: var(--md-sys-color-outline);
+  opacity: 0; transition: opacity .3s var(--emph), width .2s var(--spring), right .2s var(--spring), background-color .2s;
+}
+#galScroll.on #galThumb, #galScroll:hover #galThumb, #galScroll.drag #galThumb { opacity: .7; }
+#galScroll:hover #galThumb, #galScroll.drag #galThumb { width: 12px; right: 1px; opacity: 1; background: var(--md-sys-color-primary); }
+#galBubble {
+  position: absolute; right: 26px; top: 50%; translate: 0 -50%; white-space: nowrap; padding: 10px 18px; border-radius: 999px;
+  background: var(--md-sys-color-inverse-surface); color: var(--md-sys-color-inverse-on-surface); font-size: 14px; font-weight: 500;
+  box-shadow: 0 2px 10px rgb(0 0 0 / .25); opacity: 0; transform: translateX(12px) scale(.9); transform-origin: right center; pointer-events: none;
+  transition: opacity .2s var(--emph), transform .35s var(--spring);
+}
+#galScroll.drag #galBubble.has { opacity: 1; transform: none; }
