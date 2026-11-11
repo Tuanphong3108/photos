@@ -712,3 +712,4 @@ img, picture, svg, canvas { -webkit-user-drag: none; user-select: none; -webkit-
 .tile.bad::before { content: none; }
 .tile.bad img { object-fit: contain; padding: 14%; border-radius: 0; }
 .tile.bad.sel img { transform: scale(.86); }
+.tile { content-visibility: auto; contain-intrinsic-size: auto 170px; }

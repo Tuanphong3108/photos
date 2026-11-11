@@ -925,9 +925,9 @@ async function walk(dh, root, path, out, depth = 0) {
 }
 async function statAll(items) {
   let i = 0;
-  await Promise.all(Array.from({ length: 16 }, async () => {
+  await Promise.all(Array.from({ length: 8 }, async () => {
     while (i < items.length) {
-      const it = items[i++];
+      const it = items[i++]; if (i % 200 === 0) await new Promise(r => setTimeout(r, 0));
       try { const f = await it.handle.getFile(); it.mtime = f.lastModified; } catch (e) { it.mtime = 0; }
     }
   }));
@@ -959,23 +959,25 @@ function refreshGallery(ask) {
 
 /* ---- Ảnh thu nhỏ (tải lười, tối đa 4 luồng) ---- */
 const tq = []; let tact = 0;
+const MAXT = (navigator.hardwareConcurrency || 4) <= 4 ? 2 : 4;   /* máy yếu: ít luồng giải mã hơn */
 function thumbOf(it) {
   if (!thumbs.has(it)) thumbs.set(it, new Promise((res, rej) => { tq.push({ it, res, rej }); pump(); }));
   return thumbs.get(it);
 }
 function pump() {
-  while (tact < 4 && tq.length) {
-    const j = tq.shift(); tact++;
-    makeThumb(j.it).then(j.res, j.rej).finally(() => { tact--; pump(); });
+  while (tact < MAXT && tq.length) {
+    const j = tq.pop();   /* ưu tiên ô vừa vào màn hình gần nhất */
+    tact++;
+    makeThumb(j.it).then(j.res, j.rej).finally(() => { tact--; setTimeout(pump, 0); });
   }
 }
 async function makeThumb(it) {
   const file = await it.handle.getFile();
   let src;
-  try { src = await createImageBitmap(file, { resizeWidth: 512, resizeQuality: 'medium' }); }
+  try { src = await createImageBitmap(file, { resizeWidth: 400, resizeQuality: 'medium' }); }
   catch (e) {
     const u = URL.createObjectURL(file), im = new Image();
-    try { im.src = u; await im.decode(); const k = Math.min(1, 512 / (im.naturalWidth || 512)); src = { width: Math.max(1, Math.round((im.naturalWidth || 512) * k)), height: Math.max(1, Math.round((im.naturalHeight || 512) * k)), draw: im }; }
+    try { im.src = u; await im.decode(); const k = Math.min(1, 400 / (im.naturalWidth || 400)); src = { width: Math.max(1, Math.round((im.naturalWidth || 400) * k)), height: Math.max(1, Math.round((im.naturalHeight || 400) * k)), draw: im }; }
     finally { setTimeout(() => URL.revokeObjectURL(u), 1000); }
   }
   const w = src.width, h = src.height, c = mk(w, h);
@@ -989,12 +991,19 @@ const darkMQ = matchMedia('(prefers-color-scheme: dark)');
 const errSrc = () => darkMQ.matches ? 'images/error-dark.png' : 'images/error.png';
 function markBad(t) { t.classList.add('bad', 'ready'); t.firstChild.src = errSrc(); }
 darkMQ.addEventListener('change', () => $$('.tile.bad img', galGrid).forEach(im => { im.src = errSrc(); }));
-const tileIO = new IntersectionObserver(es => es.forEach(e => {
-  if (!e.isIntersecting) return;
-  const t = e.target; tileIO.unobserve(t);
-  const it = GAL.shown[+t.dataset.i]; if (!it) return;
+/* Tải lười: chỉ giải mã ảnh thu nhỏ của ô đang (hoặc sắp) hiện trên màn hình; ô cuộn qua nhanh thì hủy khỏi hàng đợi */
+function reqThumb(t) {
+  const it = GAL.shown[+t.dataset.i];
+  if (!it || t.dataset.ld || t.classList.contains('ready') || t.classList.contains('bad')) return;
+  t.dataset.ld = '1';
   thumbOf(it).then(r => { const im = t.firstChild; im.src = r.url; im.onload = () => t.classList.add('ready'); }, () => markBad(t));
-}), { root: gal, rootMargin: '600px' });
+}
+function cancelThumb(t) {
+  if (!t.dataset.ld || t.classList.contains('ready') || t.classList.contains('bad')) return;
+  const it = GAL.shown[+t.dataset.i], k = tq.findIndex(j => j.it === it);
+  if (k >= 0) { tq.splice(k, 1); thumbs.delete(it); t.dataset.ld = ''; }
+}
+const tileIO = new IntersectionObserver(es => es.forEach(e => (e.isIntersecting ? reqThumb : cancelThumb)(e.target)), { root: gal, rootMargin: '300px' });
 
 const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').toLowerCase();
 const nameKey = it => it.nn || (it.nn = norm(it.name));
