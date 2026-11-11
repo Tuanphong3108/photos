@@ -658,9 +658,10 @@ stage.addEventListener('wheel', e => {
   if (app.dataset.state !== 'image') return;
   e.preventDefault();
   const r = stage.getBoundingClientRect();
-  if (e.ctrlKey || e.metaKey) zoomAt(S.scale * Math.exp(-e.deltaY * .01), e.clientX - r.left, e.clientY - r.top);
-  else if (S.scale > S.fit * 1.001) { S.panX -= e.deltaX; S.panY -= e.deltaY; clampPan(); render(); }
-  else if (!e.deltaX && S.tool === '') zoomAt(S.scale * Math.exp(-e.deltaY * .0015), e.clientX - r.left, e.clientY - r.top);
+  const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
+  if (e.ctrlKey || e.metaKey) zoomAt(S.scale * Math.exp(-dy * .01), e.clientX - r.left, e.clientY - r.top);
+  else if (Math.abs(e.deltaX) > Math.abs(dy)) { if (S.scale > S.fit * 1.001) { S.panX -= e.deltaX; clampPan(); render(); } }
+  else zoomAt(S.scale * Math.exp(-dy * .002), e.clientX - r.left, e.clientY - r.top);
 }, { passive: false });
 stage.addEventListener('dblclick', e => {
   if (app.dataset.state !== 'image' || S.tool === 'draw' || S.tool === 'crop' || e.target.closest('.nav')) return;
