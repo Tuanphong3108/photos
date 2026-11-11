@@ -603,3 +603,14 @@ img, picture, svg, canvas { -webkit-user-drag: none; user-select: none; -webkit-
 #ctxAnchor { position: fixed; width: 0; height: 0; pointer-events: none; z-index: 90; }
 #ctxMenu { min-width: 220px; }
 .ctxgap { display: inline-block; width: 24px; }
+
+/* ---- Chế độ xem toàn màn hình: chỉ còn ảnh trên nền đen ---- */
+#app.fs { --stage-bg: #000; grid-template-rows: minmax(0, 1fr); }
+#app.fs #topbar, #app.fs #panel { display: none; }
+#app.fs #stage, #app.fs #workspace:has(#panel) #stage { border-radius: 0; margin: 0; }
+#fsExit {
+  position: fixed; top: 16px; left: 50%; z-index: 80; translate: -50% 0;
+  opacity: 0; transform: translateY(-24px) scale(.9); pointer-events: none; visibility: hidden;
+  transition: opacity .25s var(--emph), transform .4s var(--spring), visibility 0s .4s;
+}
+#fsExit.show { opacity: 1; transform: none; pointer-events: auto; visibility: visible; transition: opacity .2s var(--emph), transform .45s var(--spring), visibility 0s; }

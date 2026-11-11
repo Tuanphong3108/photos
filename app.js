@@ -1507,8 +1507,16 @@ function toggleFs() {
 document.addEventListener('fullscreenchange', () => {
   const b = $('#btnFs'); b.querySelector('md-icon').dataset.i = isFs() ? 'fullscreen_exit' : 'fullscreen';
   paintIcons(b); b.dataset.tip = isFs() ? 'Thoát toàn màn hình' : 'Toàn màn hình'; b.setAttribute('aria-label', b.dataset.tip);
-  $('#ctxMenu').open = false; layout();
+  $('#ctxMenu').open = false;
+  app.classList.toggle('fs', isFs());
+  if (isFs() && S.tool) setTool(S.tool);
+  fsNear(false); layout();
 });
+const fsExit = $('#fsExit');
+const fsNear = on => fsExit.classList.toggle('show', !!on && isFs());
+fsExit.onclick = toggleFs;
+window.addEventListener('pointermove', e => { if (isFs()) fsNear(e.clientY < 96 || e.target === fsExit || fsExit.matches(':hover')); }, { passive: true });
+document.addEventListener('mouseleave', () => fsNear(false));
 $('#btnFs').onclick = toggleFs;
 
 const cm = $('#ctxMenu'), ctxAnchor = $('#ctxAnchor');
