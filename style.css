@@ -718,3 +718,7 @@ img, picture, svg, canvas { -webkit-user-drag: none; user-select: none; -webkit-
 md-text-button > md-icon[slot="icon"], md-filled-button > md-icon[slot="icon"], md-filled-tonal-button > md-icon[slot="icon"], md-outlined-button > md-icon[slot="icon"] {
   font-size: 18px; width: 18px; height: 18px; --md-icon-size: 18px; font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 20;
 }
+
+/* Placeholder icon ảnh khi thumbnail chưa tải xong */
+.tile .ph { position: absolute; inset: 0; margin: auto; width: 40px; height: 40px; --md-icon-size: 40px; font-size: 40px; color: var(--md-sys-color-outline); opacity: .55; pointer-events: none; transition: opacity .25s var(--emph); }
+.tile.ready .ph { opacity: 0; }

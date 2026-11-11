@@ -1096,7 +1096,8 @@ function renderGallery() {
     const b = document.createElement('button'); b.className = 'tile' + (GAL.sel.has(it) ? ' sel' : ''); b.dataset.i = base + i; b.dataset.tip = it.name; b.setAttribute('aria-label', it.name);
     const im = document.createElement('img'); im.alt = ''; im.draggable = false;
     const ck = document.createElement('span'); ck.className = 'chk'; ck.innerHTML = '<md-icon data-i="check_circle"></md-icon>';
-    b.append(im, ck); frag.appendChild(b); it.el = b;
+    const ph = document.createElement('md-icon'); ph.className = 'ph'; ph.dataset.i = 'image';
+    b.append(im, ph, ck); frag.appendChild(b); it.el = b;
   });
   let shown = [], msg = '';
   GAL.tree = buildTree();
