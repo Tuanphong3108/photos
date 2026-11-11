@@ -1671,8 +1671,21 @@ $('#miSaveAsDd').onclick = () => { closeMenus(); saveAs(); };
 $('#miOpen').onclick = () => { closeMenus(); pickFiles(); };
 $('#miOpenDir').onclick = () => { closeMenus(); pickDir(); };
 const HELP_URL = 'https://support.google.com/chromebook/answer/1751068?hl=vi&ref_topic=12016120&sjid=16665206169942355344-NC';
+
 const HELP_HTML = `
-<p>Bạn có thể mở và chỉnh sửa cơ bản các ảnh đã lưu trên thiết bị của mình.</p>
+<p>Photos giúp bạn quản lý thư viện ảnh trên thiết bị, xem ảnh và thực hiện các chỉnh sửa cơ bản. Bạn có thể duyệt ảnh theo thời gian, mở thư mục, chọn nhiều ảnh để quản lý hoặc mở một ảnh riêng để xem và chỉnh sửa.</p>
+
+<h3>Thư viện ảnh (Gallery)</h3>
+<ul>
+  <li><b>Tất cả:</b> hiển thị các ảnh trong thư viện, được sắp xếp và nhóm theo tháng, năm để dễ tìm kiếm.</li>
+  <li><b>Tệp:</b> duyệt ảnh theo thư mục trên thiết bị. Chọn một thư mục để xem nội dung bên trong; dùng nút <b>Quay lại</b> để trở về thư mục trước đó.</li>
+  <li><b>Tìm kiếm:</b> sử dụng ô tìm kiếm để tìm ảnh theo tên hoặc ngày.</li>
+  <li><b>Chọn ảnh:</b> bật chế độ <b>Chọn</b> rồi nhấn vào các ảnh muốn thao tác. Bạn có thể chọn nhiều ảnh cùng lúc.</li>
+  <li><b>Sao chép và di chuyển:</b> dùng các thao tác <b>Sao chép</b> hoặc <b>Cắt</b>, sau đó mở thư mục đích và chọn <b>Dán</b>.</li>
+  <li><b>Xóa:</b> chọn một hoặc nhiều ảnh rồi dùng thao tác Xóa và xác nhận.</li>
+  <li><b>Menu ngữ cảnh:</b> nhấp chuột phải vào ảnh để mở các thao tác phù hợp với tệp đó.</li>
+  <li><b>Thanh cuộn:</b> sử dụng thanh cuộn tùy chỉnh để duyệt qua thư viện ảnh.</li>
+</ul>
 
 <h3>Mở ảnh</h3>
 <ul>
@@ -1686,6 +1699,7 @@ const HELP_HTML = `
 <h3>Xem ảnh</h3>
 <ul>
   <li><b>Thu phóng:</b> dùng biểu tượng Phóng to / Thu nhỏ, phím <kbd>+</kbd> / <kbd>−</kbd>, <kbd>Ctrl</kbd> + cuộn chuột hoặc chụm hai ngón. Nhấp đúp để phóng to hoặc quay về vừa khung (<kbd>0</kbd>). Khi đã phóng to, kéo ảnh để di chuyển.</li>
+  <li><b>Toàn màn hình:</b> chọn biểu tượng Toàn màn hình hoặc nhấn <kbd>F</kbd> để tập trung xem ảnh. Di chuyển chuột lên phía trên để hiển thị điều khiển thoát toàn màn hình.</li>
   <li><b>Thông tin:</b> chọn biểu tượng Thông tin (<kbd>I</kbd>) để xem tên, loại, dung lượng, ngày sửa đổi, kích thước và dữ liệu EXIF của ảnh (nếu có).</li>
 </ul>
 
@@ -1706,14 +1720,21 @@ const HELP_HTML = `
   <li>Sau khi chỉnh sửa, chọn <b>Lưu</b> để ghi vào tệp gốc, hoặc <b>Hủy chỉnh sửa</b> để bỏ mọi thay đổi.</li>
   <li><b>Lưu dưới dạng</b> (<kbd>Ctrl + S</kbd>) cho phép đặt tên mới và chọn định dạng PNG, JPEG hoặc WebP.</li>
   <li><b>In:</b> chọn biểu tượng Thêm (⋮) rồi chọn <b>In</b> (<kbd>Ctrl + P</kbd>).</li>
-  <li><b>Xóa:</b> chọn biểu tượng Xóa (hoặc phím <kbd>Delete</kbd>) rồi xác nhận để xóa tệp khỏi thiết bị. Chỉ xóa được ảnh mở bằng <b>Mở...</b>, <b>Mở thư mục...</b> hoặc <b>Mở bằng Photos</b>.
+  <li><b>Xóa:</b> chọn biểu tượng Xóa (hoặc phím <kbd>Delete</kbd>) rồi xác nhận để xóa tệp khỏi thiết bị. Chỉ xóa được ảnh mở bằng <b>Mở...</b>, <b>Mở thư mục...</b> hoặc <b>Mở bằng Photos</b>.</li>
   <li><b>Chia sẻ:</b> chọn biểu tượng Chia sẻ để gửi ảnh qua các ứng dụng khác, hoặc sao chép ảnh vào bộ nhớ tạm nếu thiết bị không hỗ trợ chia sẻ.</li>
+</ul>
+
+<h3>Ứng dụng liên quan</h3>
+<ul>
+  <li><b>Media Player:</b> dùng để phát nhạc và video. Photos tập trung vào quản lý, xem và chỉnh sửa hình ảnh; hãy sử dụng Media Player cho nội dung âm thanh và video. <a href="https://tuanphong3108.github.io/music-player/" target="_blank" rel="noopener noreferrer">Mở Media Player</a>.</li>
 </ul>
 
 <h3>Lưu ý</h3>
 <ul>
   <li>Ảnh động (GIF, APNG, WebP động) chỉ có thể xem, các công cụ chỉnh sửa sẽ bị làm xám.</li>
   <li>Một số định dạng như HEIC hiện chưa mở được.</li>
+  <li>Ảnh thu nhỏ được tải khi cần để giảm mức sử dụng tài nguyên trên thiết bị.</li>
+  <li>Nếu tệp ảnh không thể đọc được, Photos sẽ hiển thị biểu tượng lỗi thay cho ảnh thu nhỏ.</li>
 </ul>`;
 $('#miHelp').onclick = async () => {
   closeMenus();
