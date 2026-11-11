@@ -515,7 +515,7 @@ md-dialog { --md-dialog-container-max-height: min(640px, calc(100vh - 48px)); }
 /* ---- Đổi tên tệp ---- */
 #fileName { cursor: text; border-radius: 12px; padding: 4px 10px; margin: 0 0 0 -10px; transition: background-color .2s var(--emph); }
 #fileName:hover { background: var(--md-sys-color-surface-container-high); }
-#app:not([data-state="image"]) #fileName { pointer-events: none; cursor: default; }
+#app:not([data-state="image"]):not([data-state="error"]) #fileName { pointer-events: none; cursor: default; }
 #renameField {
   width: min(320px, 100%); margin-left: -4px;
   --md-outlined-text-field-container-shape: var(--r-m);

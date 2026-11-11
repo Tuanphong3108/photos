@@ -217,10 +217,11 @@ function afterChange() {
 }
 function updateUI() {
   const st = app.dataset.state, img = st === 'image', dirty = isDirty(), drawing = S.tool === 'draw';
-  const edit = img && !S.anim;
-  $$('#tbView md-icon-button').forEach(b => { b.disabled = !img; });
+  const edit = img && !S.anim, usable = img || (st === 'error' && hasFile());
+  $$('#tbView md-icon-button').forEach(b => { b.disabled = !usable; });
+  ['btnZoomIn', 'btnZoomOut'].forEach(id => { $('#' + id).disabled = !img; });
   ['btnCrop', 'btnResize', 'btnAdjust', 'btnDraw'].forEach(id => { $('#' + id).disabled = !edit; });
-  $('#btnDelete').disabled = !(img && canDelete());
+  $('#btnDelete').disabled = !(usable && canDelete());
   $$('.js-undo').forEach(b => { b.disabled = !(edit && S.hi > 0); });
   $$('.js-redo').forEach(b => { b.disabled = !(edit && S.hi < S.H.length - 1); });
   $('#tbView').hidden = drawing; $('#tbDraw').hidden = !drawing;
@@ -690,8 +691,8 @@ function showError(code, name) {
   const [t, d] = ERRORS[code] || ERRORS.ERR_DECODE_FAILED;
   $('#errTitle').textContent = t; $('#errText').textContent = name ? `${name}: ${d}` : d; $('#errCode').textContent = code;
   S.H = []; S.hi = -1; S.iw = S.ih = S.lastW = S.lastH = 0;
-  if (S.tool) setTool(S.tool);
-  setState('error');
+  if (S.tool && S.tool !== 'info') setTool(S.tool);
+  setState('error'); updateInfo();
 }
 
 async function decode(file) {
@@ -774,7 +775,7 @@ let renaming = false;
 const splitName = n => { const d = n.lastIndexOf('.'); return d > 0 ? [n.slice(0, d), n.slice(d)] : [n, '']; };
 function startRename() {
   const f = S.files[S.idx];
-  if (renaming || !f || app.dataset.state !== 'image') return;
+  if (renaming || !f || !(app.dataset.state === 'image' || (app.dataset.state === 'error' && hasFile()))) return;
   renaming = true;
   renameF.value = splitName(f.name)[0];
   nameEl.hidden = true; $('#fileCount').hidden = true; renameF.hidden = false;
@@ -849,10 +850,11 @@ renameF.addEventListener('keydown', e => {
 renameF.addEventListener('focusout', () => endRename(true));
 
 /* ---- Xóa ảnh ---- */
-const canDelete = () => { const f = S.files[S.idx]; return !!(f && f.handle && typeof f.handle.remove === 'function'); };
+const hasFile = () => { const f = S.files[S.idx]; return !!(f && (f.handle || f.file)); };
+const canDelete = () => { const f = S.files[S.idx]; return !!(f && f.handle && (typeof f.handle.remove === 'function' || f.dir)); };
 async function deleteCurrent() {
   const f = S.files[S.idx];
-  if (!f || app.dataset.state !== 'image') return;
+  if (!f || !['image', 'error'].includes(app.dataset.state)) return;
   if (!canDelete()) { toast('Không thể xóa ảnh này vì Photos không có quyền truy cập tệp'); return; }
   const r = await dialog('Xóa ảnh này?', `<p>Tệp <b>${esc(f.name)}</b> sẽ bị xóa khỏi thiết bị. Bạn không thể hoàn tác thao tác này.</p>`,
     [{ label: 'Hủy', value: 'cancel' }, { label: 'Xóa', value: 'delete', danger: true }]);
@@ -862,7 +864,7 @@ async function deleteCurrent() {
     if (h.queryPermission && (await h.queryPermission({ mode: 'readwrite' })) !== 'granted') {
       if ((await h.requestPermission({ mode: 'readwrite' })) !== 'granted') throw new Error('perm');
     }
-    await h.remove();
+    if (typeof h.remove === 'function') await h.remove(); else await f.dir.removeEntry(f.name);
   } catch (e) { toast('Không thể xóa tệp'); return; }
   const idx = S.idx;
   S.files.splice(idx, 1); GAL.dirty = true;
@@ -1538,9 +1540,18 @@ function parseTiff(dv, base) {
     exposure: ex[0x829A], fnum: ex[0x829D], iso: ex[0x8827], focal: ex[0x920A]
   };
 }
-function updateInfo() {
+async function updateInfo() {
   const dl = $('#infoList'); dl.innerHTML = '';
-  const f = S.files[S.idx], file = f && f.file;
+  const f = S.files[S.idx];
+  if (app.dataset.state === 'error' && f) {
+    let raw = f.file; try { raw = raw || (f.handle && await f.handle.getFile()); } catch (e) { /* bỏ qua */ }
+    if (!raw || S.files[S.idx] !== f) return;
+    const g = document.createElement('div'); g.className = 'grp'; g.textContent = 'Tệp'; dl.appendChild(g);
+    [['Tên', f.name], ['Loại', raw.type || (/\.([a-z0-9]+)$/i.exec(f.name) || [])[1]?.toUpperCase()], ['Dung lượng', fmtSize(raw.size)], ['Ngày sửa đổi', raw.lastModified ? new Date(raw.lastModified).toLocaleString('vi-VN') : ''], ['Tình trạng', 'Không thể đọc nội dung ảnh']]
+      .forEach(([t, v]) => { if (!v) return; const x = document.createElement('dt'), y = document.createElement('dd'); x.textContent = t; y.textContent = v; dl.append(x, y); });
+    return;
+  }
+  const file = f && f.file;
   if (!file || !S.iw) return;
   const grp = t => { const g = document.createElement('div'); g.className = 'grp'; g.textContent = t; dl.appendChild(g); };
   const row = (t, v) => { if (v === undefined || v === null || v === '') return; const a = document.createElement('dt'), b = document.createElement('dd'); a.textContent = t; b.textContent = v; dl.append(a, b); };
@@ -1619,8 +1630,15 @@ async function currentBlob() {
   return encode('image/png');
 }
 async function share() {
-  if (app.dataset.state !== 'image') return;
+  const st0 = app.dataset.state;
+  if (st0 !== 'image' && !(st0 === 'error' && hasFile())) return;
   try {
+    const f0 = S.files[S.idx];
+    if (st0 === 'error') {
+      const raw = f0.file || await f0.handle.getFile();
+      if (navigator.canShare && navigator.canShare({ files: [raw] })) { await navigator.share({ files: [raw], title: raw.name }); return; }
+      toast('Trình duyệt không hỗ trợ chia sẻ tệp này'); return;
+    }
     const blob = await currentBlob(), name = S.files[S.idx].name;
     const file = blob instanceof File ? blob : new File([blob], name.replace(/\.[^.]+$/, '') + '.png', { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: file.name }); return; }
@@ -1823,6 +1841,15 @@ document.addEventListener('mouseleave', () => fsNear(false));
 $('#btnFs').onclick = toggleFs;
 
 const cm = $('#ctxMenu'), ctxAnchor = $('#ctxAnchor');
+async function copyRawFile() {
+  const f = S.files[S.idx]; if (!f) return;
+  if (f.dir && f.handle) { GAL.clip = { mode: 'copy', items: [f] }; toast('Đã sao chép tệp. Mở thư mục đích trong Files UI rồi bấm Dán'); syncGalHeader(); return; }
+  try {
+    const raw = f.file || await f.handle.getFile();
+    await navigator.clipboard.write([new ClipboardItem({ [raw.type || 'image/png']: raw })]);
+    toast('Đã sao chép tệp vào bộ nhớ tạm');
+  } catch (e) { toast('Không thể sao chép tệp lỗi này'); }
+}
 async function copyImage() {
   try {
     const f = S.files[S.idx], blob = (!isDirty() && f.file && f.file.type === 'image/png') ? f.file : await encode('image/png');
@@ -1852,6 +1879,13 @@ function ctxItems(e) {
     }
     if (files && canPaste()) out.push(it('content_paste', 'Dán', pasteHere), 'sep');
     out.push(it('refresh', 'Làm mới', () => refreshGallery()), it('create_new_folder', 'Thêm thư mục ảnh...', pickDir), it('folder_open', 'Quản lý thư mục ảnh', manageDirs), 'sep', it('', 'Mở ảnh...', pickFiles));
+    return out;
+  }
+  if (st === 'error' && hasFile()) {
+    const out = [it('info', 'Thông tin', () => setTool('info'), { on: S.tool === 'info' }), it('content_copy', 'Sao chép tệp', copyRawFile), it('share', 'Chia sẻ', share), 'sep',
+      it('edit', 'Đổi tên', startRename)];
+    if (S.back) out.push(it('arrow_back', 'Quay lại thư viện', goBack));
+    out.push('sep', it('delete', 'Xóa', deleteCurrent, { off: !canDelete(), danger: true }));
     return out;
   }
   if (st === 'image') {
