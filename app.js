@@ -10,7 +10,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 /* ============================================================
    Biểu tượng: Material Symbols (font con, gọi bằng mã điểm)
    ============================================================ */
-const SYM = {"info":59534,"share":59405,"zoom_out":59648,"zoom_in":59647,"crop_rotate":58423,"resize":63239,"tune":58409,"draw":59206,"undo":57702,"redo":57690,"more_vert":58836,"arrow_drop_down":58821,"chevron_left":58376,"chevron_right":58377,"lock":59533,"lock_open":59544,"rotate_left":58393,"rotate_right":58394,"flip":58344,"ink_highlighter":59089,"ink_eraser":59088,"ink_pen":59091,"edit":57680,"broken_image":58285,"folder_open":58056,"image":57937,"check":58826,"close":57676,"photo_library":58387,"add_photo_alternate":58430,"print":58709,"save":57697,"content_paste":57679,"aspect_ratio":59483,"crop":58302,"restart_alt":61523,"document_scanner":58874,"palette":58295,"keyboard":58130,"help":59527,"description":59507,"open_in_new":59541,"save_as":60256,"file_open":60147,"delete":59506,"refresh":58837,"arrow_back":58820,"arrow_forward":58824,"colorize":58296,"menu_book":59929,"gif_box":59299,"text_fields":57954,"format_bold":57912,"format_italic":57919};
+const SYM = {"info":59534,"share":59405,"zoom_out":59648,"zoom_in":59647,"crop_rotate":58423,"resize":63239,"tune":58409,"draw":59206,"undo":57702,"redo":57690,"more_vert":58836,"arrow_drop_down":58821,"chevron_left":58376,"chevron_right":58377,"lock":59533,"lock_open":59544,"rotate_left":58393,"rotate_right":58394,"flip":58344,"ink_highlighter":59089,"ink_eraser":59088,"ink_pen":59091,"edit":57680,"broken_image":58285,"folder_open":58056,"image":57937,"check":58826,"close":57676,"photo_library":58387,"add_photo_alternate":58430,"print":58709,"save":57697,"content_paste":57679,"aspect_ratio":59483,"crop":58302,"restart_alt":61523,"document_scanner":58874,"palette":58295,"keyboard":58130,"help":59527,"description":59507,"open_in_new":59541,"save_as":60256,"file_open":60147,"delete":59506,"refresh":58837,"arrow_back":58820,"arrow_forward":58824,"colorize":58296,"menu_book":59929,"gif_box":59299,"text_fields":57954,"format_bold":57912,"format_italic":57919,"folder":58055,"create_new_folder":58060};
 const sym = n => String.fromCodePoint(SYM[n]);
 const lineIcon = w => `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><line x1="6" y1="18" x2="18" y2="6" stroke="currentColor" stroke-width="${w}" stroke-linecap="round"/></svg>`;
 const paintIcons = (root = document) => $$('md-icon[data-i]', root).forEach(el => { el.textContent = sym(el.dataset.i); });
@@ -32,7 +32,7 @@ stage.insertBefore(gifImg, view);
 
 const zeroAdj = { exp: 0, con: 0, sat: 0 };
 const S = {
-  files: [], idx: -1,
+  files: [], idx: -1, back: false,
   H: [], hi: -1,
   iw: 0, ih: 0, lastW: 0, lastH: 0,
   tool: '',
@@ -235,7 +235,8 @@ function updateUI() {
   $('#fileCount').textContent = S.files.length > 1 && f ? `${S.idx + 1} / ${S.files.length}` : '';
   $('#navPrev').hidden = !(img && S.idx > 0);
   $('#navNext').hidden = !(img && S.idx < S.files.length - 1);
-  document.title = f ? `${f.name} - Photos` : 'Photos';
+  document.title = st === 'gallery' ? 'Thư viện ảnh - Photos' : f ? `${f.name} - Photos` : 'Photos';
+  $('#btnBack').hidden = !(S.back && (img || st === 'loading' || st === 'error'));
   $('#cropBox').hidden = !(img && S.tool === 'crop');
 }
 function setState(s) {
@@ -757,7 +758,7 @@ async function openIndex(i, force) {
 function openList(list) {
   list = list.filter(Boolean);
   if (!list.length) return;
-  S.files = list; openIndex(0, false);
+  S.files = list; S.back = false; openIndex(0, false);
 }
 function go(d) {
   commitText();
@@ -820,7 +821,7 @@ async function renameCurrent(raw) {
       let done = false;
       if (typeof h.move === 'function') { try { await h.move(name); done = true; } catch (e) { /* tệp chọn lẻ thường không hỗ trợ move → dùng thư mục */ } }
       if (!done) {
-        const dir = f.dir || await ensureDir(f);
+        const dir = f.dir || await watchedDir(f) || await ensureDir(f);
         if (!dir) return false;
         let exists = true;
         try { await dir.getFileHandle(name); } catch (e) { if (e.name === 'NotFoundError') exists = false; else throw e; }
@@ -862,7 +863,7 @@ async function deleteCurrent() {
     await h.remove();
   } catch (e) { toast('Không thể xóa tệp'); return; }
   const idx = S.idx;
-  S.files.splice(idx, 1);
+  S.files.splice(idx, 1); GAL.dirty = true;
   S.H = []; S.hi = -1;
   toast('Đã xóa ảnh');
   if (S.files.length) { openIndex(Math.min(idx, S.files.length - 1), true); return; }
@@ -871,7 +872,7 @@ async function deleteCurrent() {
   if (S.animUrl) { URL.revokeObjectURL(S.animUrl); S.animUrl = ''; gifImg.removeAttribute('src'); }
   S.anim = false;
   if (S.tool) setTool(S.tool);
-  setState('empty');
+  if (S.back) { GAL.dirty = true; toGallery(); } else setState('empty');
 }
 $('#btnDelete').onclick = deleteCurrent;
 
@@ -888,21 +889,275 @@ async function pickFiles() {
     catch (e) { if (e.name !== 'AbortError') toast('Không thể mở hộp thoại chọn tệp'); }
   } else $('#fileInput').click();
 }
+/* ============================================================
+   Thư viện ảnh: thư mục được theo dõi (nhớ bằng IndexedDB)
+   ============================================================ */
+const idb = (() => {
+  let p;
+  const open = () => p || (p = new Promise((res, rej) => {
+    const r = indexedDB.open('photos', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('dirs', { keyPath: 'id', autoIncrement: true });
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  const tx = async (mode, fn) => {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const t = db.transaction('dirs', mode), rq = fn(t.objectStore('dirs'));
+      t.oncomplete = () => res(rq && rq.result); t.onerror = t.onabort = () => rej(t.error);
+    });
+  };
+  return { all: () => tx('readonly', s => s.getAll()), add: h => tx('readwrite', s => s.add({ handle: h })), del: id => tx('readwrite', s => s.delete(id)) };
+})();
+
+const GAL = { dirs: [], items: [], ready: Promise.resolve(), tok: 0, dirty: false, scroll: 0, t: 0 };
+const thumbs = new WeakMap();
+const SKIP_DIR = /^(\.|\$RECYCLE\.BIN$|System Volume Information$|node_modules$)/i;
+const gal = $('#gallery'), galGrid = $('#galGrid');
+
+async function walk(dh, root, path, out, depth = 0) {
+  for await (const h of dh.values()) {
+    if (h.kind === 'file') { if (isImgName(h.name)) out.push({ handle: h, name: h.name, dir: dh, root, path: [...path, h.name] }); }
+    else if (depth < 10 && !SKIP_DIR.test(h.name)) { try { await walk(h, root, [...path, h.name], out, depth + 1); } catch (e) { /* bỏ qua thư mục không đọc được */ } }
+  }
+}
+async function statAll(items) {
+  let i = 0;
+  await Promise.all(Array.from({ length: 16 }, async () => {
+    while (i < items.length) {
+      const it = items[i++];
+      try { const f = await it.handle.getFile(); it.mtime = f.lastModified; } catch (e) { it.mtime = 0; }
+    }
+  }));
+}
+async function dirPerm(h, ask) {
+  try {
+    let p = await h.queryPermission({ mode: 'readwrite' });
+    if (p !== 'granted' && ask) p = await h.requestPermission({ mode: 'readwrite' });
+    return p === 'granted';
+  } catch (e) { return false; }
+}
+function galBusy(on) { $('#galLoad').hidden = !(on && !GAL.items.length); }
+function refreshGallery(ask) {
+  const tok = ++GAL.tok;
+  return (GAL.ready = (async () => {
+    galBusy(true);
+    const out = [];
+    for (const d of GAL.dirs) {
+      d.ok = await dirPerm(d.handle, ask);
+      if (d.ok) { try { await walk(d.handle, d.handle, [], out); } catch (e) { d.ok = false; } }
+    }
+    await statAll(out);
+    if (tok !== GAL.tok) return;
+    out.sort((a, b) => (b.mtime - a.mtime) || natural(a, b));
+    GAL.items = out; GAL.t = Date.now(); GAL.dirty = false;
+    galBusy(false); renderGallery();
+  })());
+}
+
+/* ---- Ảnh thu nhỏ (tải lười, tối đa 4 luồng) ---- */
+const tq = []; let tact = 0;
+function thumbOf(it) {
+  if (!thumbs.has(it)) thumbs.set(it, new Promise((res, rej) => { tq.push({ it, res, rej }); pump(); }));
+  return thumbs.get(it);
+}
+function pump() {
+  while (tact < 4 && tq.length) {
+    const j = tq.shift(); tact++;
+    makeThumb(j.it).then(j.res, j.rej).finally(() => { tact--; pump(); });
+  }
+}
+async function makeThumb(it) {
+  const file = await it.handle.getFile();
+  let src;
+  try { src = await createImageBitmap(file, { resizeWidth: 512, resizeQuality: 'medium' }); }
+  catch (e) {
+    const u = URL.createObjectURL(file), im = new Image();
+    try { im.src = u; await im.decode(); const k = Math.min(1, 512 / (im.naturalWidth || 512)); src = { width: Math.max(1, Math.round((im.naturalWidth || 512) * k)), height: Math.max(1, Math.round((im.naturalHeight || 512) * k)), draw: im }; }
+    finally { setTimeout(() => URL.revokeObjectURL(u), 1000); }
+  }
+  const w = src.width, h = src.height, c = mk(w, h);
+  c.getContext('2d').drawImage(src.draw || src, 0, 0, w, h);
+  if (src.close) src.close();
+  const blob = await new Promise(r => c.toBlob(r, 'image/webp', .82));
+  if (!blob) throw new Error('thumb');
+  return { url: URL.createObjectURL(blob), ratio: w / h };
+}
+const tileIO = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  const t = e.target; tileIO.unobserve(t);
+  const it = GAL.items[+t.dataset.i]; if (!it) return;
+  thumbOf(it).then(r => { const im = t.firstChild; im.src = r.url; im.onload = () => t.classList.add('ready'); }, () => t.classList.add('bad'));
+}), { root: gal, rootMargin: '600px' });
+
+function renderGallery() {
+  tileIO.disconnect(); galGrid.textContent = '';
+  const none = !GAL.dirs.length, need = GAL.dirs.filter(d => d.ok === false);
+  const empty = none || (!GAL.items.length && !need.length);
+  $('#galEmpty').hidden = !empty;
+  if (empty) {
+    $('#galEmptyTitle').textContent = none ? 'Thư viện ảnh' : 'Chưa có ảnh nào';
+    $('#galEmptyText').textContent = none
+      ? 'Thêm thư mục ảnh để xem tất cả ảnh của bạn tại đây, kể cả trong thư mục con. Photos sẽ ghi nhớ các thư mục này cho những lần mở sau.'
+      : 'Photos không tìm thấy ảnh nào trong các thư mục đã thêm.';
+  }
+  $('#galPerm').hidden = !need.length;
+  if (need.length) $('#galPermText').textContent = 'Photos cần bạn cấp lại quyền truy cập thư mục: ' + need.map(d => d.handle.name).join(', ');
+  const fmt = new Intl.DateTimeFormat('vi-VN', { month: 'long', year: 'numeric' }), frag = document.createDocumentFragment();
+  let key = null;
+  GAL.items.forEach((it, i) => {
+    let k = it.mtime ? fmt.format(it.mtime) : 'Không rõ ngày';
+    k = k.charAt(0).toUpperCase() + k.slice(1);
+    if (k !== key) { key = k; const hd = document.createElement('h2'); hd.className = 'galHead'; hd.textContent = k; frag.appendChild(hd); }
+    const b = document.createElement('button'); b.className = 'tile'; b.dataset.i = i; b.dataset.tip = it.name; b.setAttribute('aria-label', it.name);
+    const im = document.createElement('img'); im.alt = ''; im.draggable = false; b.appendChild(im);
+    frag.appendChild(b); it.el = b;
+  });
+  galGrid.appendChild(frag);
+  $$('.tile', galGrid).forEach(t => tileIO.observe(t));
+}
+galGrid.addEventListener('click', e => { const t = e.target.closest('.tile'); if (t) openFromGallery(+t.dataset.i, t); });
+
+/* ---- Vào / ra khỏi thư viện ---- */
+const fitBox = (wr, ratio, pad) => {
+  const aw = wr.width - pad * 2, ah = wr.height - pad * 2;
+  let w = aw, h = w / ratio; if (h > ah) { h = ah; w = h * ratio; }
+  return { left: wr.left + (wr.width - w) / 2, top: wr.top + (wr.height - h) / 2, width: w, height: h };
+};
+const px = b => ({ left: b.left + 'px', top: b.top + 'px', width: b.width + 'px', height: b.height + 'px' });
+let opening = false;
+async function openFromGallery(i, tile) {
+  if (opening || !GAL.items[i]) return;
+  opening = true;
+  try {
+    GAL.scroll = gal.scrollTop;
+    S.files = GAL.items; S.back = true;
+    const im = tile.firstChild, wr = $('#workspace').getBoundingClientRect();
+    let fly = null, anim = null;
+    if (tile.classList.contains('ready') && im.naturalWidth) {
+      const r0 = tile.getBoundingClientRect(), box = fitBox(wr, im.naturalWidth / im.naturalHeight, 16);
+      fly = document.createElement('img'); fly.className = 'fly'; fly.src = im.src; fly.alt = ''; fly.draggable = false;
+      Object.assign(fly.style, px(r0), { borderRadius: '16px' });
+      document.body.appendChild(fly); app.classList.add('flying');
+      anim = fly.animate([{ ...px(r0), borderRadius: '16px' }, { ...px(box), borderRadius: '12px' }], { duration: 420, easing: 'cubic-bezier(.2,0,0,1)', fill: 'forwards' });
+    }
+    const p = openIndex(i, true);
+    await Promise.all([p, anim && anim.finished.catch(() => {})]);
+    if (fly) {
+      if (app.dataset.state === 'image' && S.iw) {
+        const r = rect(), st = stage.getBoundingClientRect();
+        const end = { left: st.left + r.x, top: st.top + r.y, width: r.w, height: r.h };
+        await fly.animate([{}, { ...px(end), borderRadius: '0px' }], { duration: 160, easing: 'cubic-bezier(.2,0,0,1)', fill: 'forwards' }).finished.catch(() => {});
+      }
+      await fly.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, fill: 'forwards' }).finished.catch(() => {});
+      fly.remove(); app.classList.remove('flying');
+    }
+  } finally { opening = false; app.classList.remove('flying'); }
+}
+function toGallery() {
+  S.token++; S.H = []; S.hi = -1; S.iw = S.ih = S.lastW = S.lastH = 0;
+  if (S.animUrl) { URL.revokeObjectURL(S.animUrl); S.animUrl = ''; gifImg.removeAttribute('src'); }
+  S.anim = false; S.exif = null;
+  if (S.tool) setTool(S.tool);
+  const cur = S.files[S.idx], was = S.files === GAL.items;
+  setState('gallery');
+  if (was && GAL.dirty) { GAL.dirty = false; renderGallery(); }
+  requestAnimationFrame(() => {
+    gal.scrollTop = GAL.scroll;
+    const t = was && cur && cur.el && cur.el.isConnected ? cur.el : null;
+    if (t) t.scrollIntoView({ block: 'nearest' });
+  });
+}
+async function goBack() {
+  if (!S.back) return;
+  if (S.H.length && !(await confirmDiscard())) return;
+  commitText();
+  toGallery();
+}
+$('#btnBack').onclick = goBack;
+
+/* ---- Thêm / quản lý thư mục theo dõi ---- */
+async function addDir() {
+  let dh;
+  try { dh = await window.showDirectoryPicker({ mode: 'readwrite', id: 'photos' }); }
+  catch (e) { if (e.name !== 'AbortError') toast('Không thể mở thư mục'); return false; }
+  for (const d of GAL.dirs) { try { if (await d.handle.isSameEntry(dh)) { toast('Thư mục này đã được theo dõi'); return 'dup'; } } catch (e) { /* bỏ qua */ } }
+  let id; try { id = await idb.add(dh); } catch (e) { id = Date.now(); }
+  GAL.dirs.push({ id, handle: dh, ok: true });
+  toast('Đã thêm thư mục “' + dh.name + '”');
+  return 'added';
+}
 async function pickDir() {
   if (S.H.length && !(await confirmDiscard())) return;
   if (window.showDirectoryPicker) {
-    try {
-      const dh = await showDirectoryPicker({ mode: 'readwrite' });
-      const list = await listDir(dh);
-      if (!list.length) { toast('Thư mục không có ảnh'); return; }
-      S.H = []; openList(list);
-    } catch (e) { if (e.name !== 'AbortError') toast('Không thể mở thư mục'); }
+    const r = await addDir();
+    if (!r) return;
+    if (app.dataset.state !== 'gallery') toGallery();
+    if (r === 'added') refreshGallery();
   } else {
     const inp = document.createElement('input'); inp.type = 'file'; inp.webkitdirectory = true; inp.multiple = true;
     inp.onchange = () => { const l = [...inp.files].filter(isImgFile).map(f => ({ file: f, name: f.name })).sort(natural); if (l.length) { S.H = []; openList(l); } else toast('Thư mục không có ảnh'); };
     inp.click();
   }
 }
+function manageDirs() {
+  const body = $('#dlgBody');
+  const draw = () => {
+    body.innerHTML = GAL.dirs.length
+      ? '<div class="dirlist">' + GAL.dirs.map(d => `<div class="dirrow"><md-icon data-i="folder"></md-icon><div class="dn"><b>${esc(d.handle.name)}</b><span>${d.ok === false ? 'Cần cấp lại quyền truy cập' : 'Đang theo dõi, gồm cả thư mục con'}</span></div><md-text-button data-id="${d.id}">Hủy theo dõi</md-text-button></div>`).join('') + '</div>'
+      : '<p>Chưa có thư mục nào được theo dõi. Thêm thư mục để xem ảnh trong Thư viện ảnh.</p>';
+    paintIcons(body);
+  };
+  dialog('Quản lý thư mục ảnh', '', [{ label: 'Thêm thư mục ảnh', value: 'add' }, { label: 'Xong', value: 'ok' }]).then(async v => {
+    body.onclick = null;
+    if (v === 'add' && window.showDirectoryPicker) { if (await addDir() === 'added') refreshGallery(); manageDirs(); }
+  });
+  draw();
+  body.onclick = async e => {
+    const b = e.target.closest('md-text-button[data-id]'); if (!b) return;
+    const id = +b.dataset.id;
+    try { await idb.del(id); } catch (err) { /* bỏ qua */ }
+    GAL.dirs = GAL.dirs.filter(d => d.id !== id);
+    refreshGallery(); draw();
+  };
+}
+$('#miManageDirs').onclick = () => { closeMenus(); manageDirs(); };
+$('#btnGalAdd').onclick = pickDir;
+$('#btnGalOpen').onclick = pickFiles;
+$('#btnGalPerm').onclick = () => refreshGallery(true);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && app.dataset.state === 'gallery' && GAL.dirs.length && Date.now() - GAL.t > 15000) refreshGallery();
+});
+
+/* ---- Ảnh mở từ ngoài (bấm đúp trong Files) có nằm trong thư mục theo dõi không? ---- */
+async function watchedInfo(handle) {
+  for (const d of GAL.dirs) { try { const p = await d.handle.resolve(handle); if (p) return { d, path: p }; } catch (e) { /* bỏ qua */ } }
+  return null;
+}
+async function watchedDir(f) {
+  const w = f.watch; if (!w) return null;
+  try {
+    if (!(await dirPerm(w.d.handle, true))) return null;
+    let dh = w.d.handle; for (const seg of w.path.slice(0, -1)) dh = await dh.getDirectoryHandle(seg);
+    return dh;
+  } catch (e) { return null; }
+}
+async function adoptLaunch(first, list) {
+  await GAL.ready;
+  const info = await watchedInfo(first.handle);
+  if (!info || S.files[S.idx] !== first) return;
+  first.watch = info; S.back = true; updateUI();
+  let idx = -1;
+  for (let i = 0; i < GAL.items.length && idx < 0; i++) {
+    const it = GAL.items[i];
+    if (it.name === first.name) { try { if (await it.handle.isSameEntry(first.handle)) idx = i; } catch (e) { /* bỏ qua */ } }
+  }
+  if (idx >= 0 && S.files.length === list.length && S.files[S.idx] === first) { S.files = GAL.items; S.idx = idx; updateUI(); }
+}
+GAL.ready = (async () => {
+  try { GAL.dirs = (await idb.all()).map(r => ({ id: r.id, handle: r.handle, ok: null })); } catch (e) { GAL.dirs = []; }
+  await refreshGallery();
+})();
+
 $('#fileInput').addEventListener('change', e => {
   const l = [...e.target.files].map(f => ({ file: f, name: f.name })).sort(natural);
   e.target.value = ''; if (l.length) { S.H = []; openList(l); }
@@ -945,7 +1200,7 @@ if ('launchQueue' in window) {
     const hs = (p.files || []).filter(h => h.kind === 'file');
     if (!hs.length) return;
     const list = hs.filter(h => isImgName(h.name)).map(h => ({ handle: h, name: h.name })).sort(natural);
-    if (list.length) openList(list);
+    if (list.length) { openList(list); adoptLaunch(list[0], list); }
     else { S.files = [{ name: hs[0].name }]; S.idx = 0; showError('ERR_UNSUPPORTED_TYPE', hs[0].name); }
   });
 }
@@ -1034,6 +1289,7 @@ function download(blob, name) {
 async function afterSave(blob, name) {
   const f = S.files[S.idx];
   f.file = new File([blob], name, { type: blob.type, lastModified: Date.now() }); f.name = name;
+  if (S.back) { thumbs.delete(f); GAL.dirty = true; }
   S.H = [{ c: flatten(cur()), a: null, adj: { ...zeroAdj } }]; S.hi = 0;
   afterChange(); toast('Đã lưu');
 }
@@ -1115,7 +1371,8 @@ const HELP_HTML = `
 
 <h3>Mở ảnh</h3>
 <ul>
-  <li>Chọn biểu tượng <b>Thêm</b> (⋮) rồi chọn <b>Mở...</b> (<kbd>Ctrl + O</kbd>) để chọn một hoặc nhiều ảnh, hoặc <b>Mở thư mục...</b> để duyệt cả thư mục.</li>
+  <li>Chọn biểu tượng <b>Thêm</b> (⋮) rồi chọn <b>Mở...</b> (<kbd>Ctrl + O</kbd>) để chọn một hoặc nhiều ảnh, hoặc <b>Mở thư mục...</b> để thêm thư mục ảnh. Photos ghi nhớ thư mục này và hiển thị tất cả ảnh (kể cả trong thư mục con) ở màn hình <b>Thư viện ảnh</b> mỗi khi bạn mở ứng dụng.</li>
+  <li>Chọn một ảnh trong Thư viện ảnh để xem và chỉnh sửa; chọn mũi tên <b>Quay lại</b> (hoặc nhấn <kbd>Esc</kbd>) để về thư viện. Dùng <b>Quản lý thư mục ảnh</b> trong menu <b>Thêm</b> để thêm hoặc hủy theo dõi thư mục.</li>
   <li>Kéo thả ảnh hoặc thư mục vào cửa sổ, hoặc dán ảnh từ bộ nhớ tạm (<kbd>Ctrl + V</kbd>).</li>
   <li>Sau khi cài Photos thành ứng dụng, bạn có thể nhấp chuột phải vào ảnh trong ứng dụng Files rồi chọn <b>Mở bằng Photos</b>.</li>
   <li>Để chuyển giữa các ảnh, dùng nút mũi tên hai bên, phím <kbd>←</kbd> / <kbd>→</kbd> hoặc vuốt ngang.</li>
@@ -1215,7 +1472,7 @@ document.addEventListener('keydown', e => {
   if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if (mod && k === 'y') { e.preventDefault(); redo(); return; }
   if (e.altKey || mod) return;
-  if (k === 'escape') { if (moreMenu.open || saveMenu.open) closeMenus(); else if (S.tool) setTool(S.tool); return; }
+  if (k === 'escape') { if (moreMenu.open || saveMenu.open) closeMenus(); else if (S.tool) setTool(S.tool); else if (S.back && (app.dataset.state === 'image' || app.dataset.state === 'error')) goBack(); return; }
   if (app.dataset.state !== 'image' && app.dataset.state !== 'error') return;
   if (k === 'delete') { deleteCurrent(); return; }
   if (k === 'arrowright' && !onRange) go(1);
@@ -1233,10 +1490,10 @@ window.addEventListener('contextmenu', e => { if (S.tool === 'draw') e.preventDe
 /* ============================================================
    Khởi động
    ============================================================ */
-setState('empty');
+setState('gallery');
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
   navigator.serviceWorker.register('sw.js').catch(() => { /* bỏ qua */ });
 }
 /* Cho phép kiểm thử tự động */
-window.__photos = { S, openList, setTool };
+window.__photos = { S, GAL, openList, setTool };
 })();

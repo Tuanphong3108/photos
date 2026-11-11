@@ -308,7 +308,7 @@ md-dialog {
 
 @keyframes pop { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
 
-#workspace { display: flex; min-height: 0; background: var(--md-sys-color-surface); }
+#workspace { position: relative; display: flex; min-height: 0; background: var(--md-sys-color-surface); }
 #stage {
   flex: 1; position: relative; overflow: hidden; background: var(--stage-bg); border-radius: var(--r-xl) var(--r-xl) 0 0;
   touch-action: none; user-select: none; -webkit-user-select: none;
@@ -541,3 +541,62 @@ img, picture, svg, canvas { -webkit-user-drag: none; user-select: none; -webkit-
 #stage.texting, #stage.texting #view { cursor: text; }
 #textOpts .p-label:first-child { margin-top: 22px; }
 .fmtrow { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 18px; }
+
+/* ---- Thư viện ảnh ---- */
+#galTitle {
+  position: absolute; left: 0; top: 50%; translate: 0 -50%; margin: 0; font-size: 28px; font-weight: 500; font-variation-settings: "ROND" 100, "wght" 500;
+  white-space: nowrap; transition: transform .45s var(--spring), opacity .3s var(--emph), visibility 0s;
+}
+.tb-left { position: relative; min-height: 40px; align-items: center; }
+#app:not([data-state="gallery"]) #galTitle { transform: translateY(-140%); opacity: 0; visibility: hidden; pointer-events: none; transition: transform .45s var(--emph), opacity .25s var(--emph), visibility 0s .45s; }
+#tbView, .tb-left > :not(#galTitle) { transition: transform .5s var(--spring), opacity .3s var(--emph), visibility 0s; }
+#app[data-state="gallery"] #tbView { transform: translateY(34px) scale(.94); opacity: 0; visibility: hidden; pointer-events: none; transition: transform .4s var(--emph), opacity .2s var(--emph), visibility 0s .4s; animation: none; }
+#app[data-state="gallery"] .tb-left > :not(#galTitle) { opacity: 0; visibility: hidden; pointer-events: none; }
+#app[data-state="gallery"] #fileCount { display: none; }
+#btnBack { align-self: center; margin-left: -12px; margin-right: -4px; }
+
+#gallery {
+  position: absolute; inset: 0; overflow-y: auto; z-index: 3; background: var(--stage-bg);
+  border-radius: var(--r-xl) var(--r-xl) 0 0; padding: 4px 16px 24px;
+  scrollbar-width: thin; scrollbar-color: var(--md-sys-color-outline-variant) transparent;
+}
+#app:not([data-state="gallery"]):not(.flying) #gallery { display: none; }
+#app[data-state="gallery"] #gallery { animation: galIn .45s var(--spring) both; }
+#app.flying:not([data-state="gallery"]) #gallery { opacity: 0; pointer-events: none; transition: opacity .3s var(--emph); }
+#app.flying #loading { display: none; }
+@keyframes galIn { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
+#galGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 6px; }
+.galHead { grid-column: 1 / -1; margin: 20px 8px 8px; font-size: 14px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); }
+.galHead:first-child { margin-top: 12px; }
+.tile {
+  position: relative; aspect-ratio: 1; padding: 0; border: 0; cursor: pointer; overflow: hidden; border-radius: 16px;
+  background: var(--md-sys-color-surface-container-high); transition: border-radius .3s var(--spring), transform .3s var(--spring);
+}
+.tile img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .35s var(--emph), transform .5s var(--spring); -webkit-user-drag: none; }
+.tile.ready img { opacity: 1; }
+.tile::after { content: ""; position: absolute; inset: 0; background: var(--md-sys-color-on-surface); opacity: 0; transition: opacity .2s; }
+.tile:hover { border-radius: 24px; }
+.tile:hover::after { opacity: .08; }
+.tile:active { transform: scale(.97); }
+.tile:focus-visible { outline: 3px solid var(--md-sys-color-primary); outline-offset: -3px; }
+.tile.bad::before { content: "\e3ad"; font-family: "Material Symbols"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 36px; color: var(--md-sys-color-outline); }
+#galPerm {
+  display: flex; align-items: center; gap: 12px; margin: 12px 0 4px; padding: 10px 12px 10px 18px;
+  background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); border-radius: var(--r-xl); font-size: 14px;
+}
+#galPerm span { flex: 1; min-width: 0; }
+#galPerm[hidden] { display: none; }
+#gallery .center-msg { z-index: 1; }
+#galEmpty[hidden], #galLoad[hidden] { display: none; }
+.fly { position: fixed; z-index: 60; object-fit: cover; pointer-events: none; -webkit-user-drag: none; box-shadow: 0 8px 32px rgb(0 0 0 / .25); }
+.dirlist { display: flex; flex-direction: column; gap: 4px; margin: 0 -8px; }
+.dirrow { display: flex; align-items: center; gap: 14px; padding: 8px 8px 8px 12px; border-radius: 16px; background: var(--md-sys-color-surface-container); }
+.dirrow md-icon { color: var(--md-sys-color-primary); flex: none; }
+.dirrow .dn { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dirrow .dn b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dirrow .dn span { font-size: 12px; color: var(--md-sys-color-on-surface-variant); }
+@media (max-width: 860px) {
+  .tb-left { display: block; }
+  .tb-left > #fileName, .tb-left > #fileCount { display: none; }
+  #galTitle { font-size: 22px; }
+}

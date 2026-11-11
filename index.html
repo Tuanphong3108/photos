@@ -19,11 +19,13 @@
 </head>
 <body>
 
-<div id="app" data-state="empty" data-tool="">
+<div id="app" data-state="gallery" data-tool="">
 
   <!-- ============ Thanh công cụ ============ -->
   <header id="topbar">
     <div class="tb-left">
+      <md-icon-button id="btnBack" hidden data-tip="Quay lại thư viện" aria-label="Quay lại thư viện"><md-icon data-i="arrow_back"></md-icon></md-icon-button>
+      <h1 id="galTitle">Thư viện ảnh</h1>
       <h1 id="fileName" tabindex="0" role="button" data-tip="Đổi tên" aria-label="Đổi tên tệp"></h1>
       <md-outlined-text-field id="renameField" hidden aria-label="Tên tệp (không gồm phần đuôi)" spellcheck="false" autocomplete="off"></md-outlined-text-field>
       <span id="fileCount"></span>
@@ -69,6 +71,7 @@
           <md-menu-item id="miSaveAs"><div slot="headline">Lưu dưới dạng</div><div slot="end" class="kbd">Ctrl + S</div></md-menu-item>
           <md-menu-item id="miOpen"><div slot="headline">Mở...</div><div slot="end" class="kbd">Ctrl + O</div></md-menu-item>
           <md-menu-item id="miOpenDir"><div slot="headline">Mở thư mục...</div></md-menu-item>
+          <md-menu-item id="miManageDirs"><div slot="headline">Quản lý thư mục ảnh</div></md-menu-item>
           <md-menu-item id="miHelp"><div slot="headline">Trợ giúp</div></md-menu-item>
           <md-menu-item id="miLicense"><div slot="headline">Giấy phép</div></md-menu-item>
         </md-menu>
@@ -78,6 +81,25 @@
 
   <!-- ============ Vùng làm việc ============ -->
   <main id="workspace">
+    <!-- ============ Thư viện ảnh ============ -->
+    <section id="gallery" aria-label="Thư viện ảnh">
+      <div id="galPerm" hidden>
+        <md-icon data-i="folder"></md-icon>
+        <span id="galPermText"></span>
+        <md-filled-tonal-button id="btnGalPerm">Cấp quyền</md-filled-tonal-button>
+      </div>
+      <div id="galGrid"></div>
+      <div class="center-msg" id="galEmpty" hidden>
+        <div class="logo" aria-hidden="true"><img src="icons/icon-192.png" alt="" width="96" height="96" draggable="false"></div>
+        <h2 id="galEmptyTitle">Thư viện ảnh</h2>
+        <p id="galEmptyText"></p>
+        <div class="row">
+          <md-filled-button id="btnGalAdd"><md-icon slot="icon" data-i="create_new_folder"></md-icon>Thêm thư mục ảnh</md-filled-button>
+          <md-filled-tonal-button id="btnGalOpen"><md-icon slot="icon" data-i="add_photo_alternate"></md-icon>Mở ảnh</md-filled-tonal-button>
+        </div>
+      </div>
+      <div class="center-msg" id="galLoad" hidden><md-circular-progress indeterminate aria-label="Đang quét thư mục"></md-circular-progress></div>
+    </section>
     <section id="stage">
       <canvas id="view" hidden></canvas>
 
