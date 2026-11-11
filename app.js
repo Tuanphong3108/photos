@@ -1493,7 +1493,14 @@ window.addEventListener('beforeunload', e => { if (isDirty()) { e.preventDefault
    ============================================================ */
 setState('gallery');
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
-  navigator.serviceWorker.register('sw.js').catch(() => { /* bỏ qua */ });
+  /* Bản cập nhật: kiểm tra bản mới mỗi lần mở và tự tải lại 1 lần khi service worker mới tiếp quản */
+  const hadSW = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadSW || reloaded || S.H.length && isDirty()) return;
+    reloaded = true; location.reload();
+  });
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => { /* bỏ qua */ });
 }
 
 /* ============================================================
