@@ -10,7 +10,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 /* ============================================================
    Biểu tượng: Material Symbols (font con, gọi bằng mã điểm)
    ============================================================ */
-const SYM = {"info":59534,"share":59405,"zoom_out":59648,"zoom_in":59647,"crop_rotate":58423,"resize":63239,"tune":58409,"draw":59206,"undo":57702,"redo":57690,"more_vert":58836,"arrow_drop_down":58821,"chevron_left":58376,"chevron_right":58377,"lock":59533,"lock_open":59544,"rotate_left":58393,"rotate_right":58394,"flip":58344,"ink_highlighter":59089,"ink_eraser":59088,"ink_pen":59091,"edit":57680,"broken_image":58285,"folder_open":58056,"image":57937,"check":58826,"close":57676,"photo_library":58387,"add_photo_alternate":58430,"print":58709,"save":57697,"content_paste":57679,"aspect_ratio":59483,"crop":58302,"restart_alt":61523,"document_scanner":58874,"palette":58295,"keyboard":58130,"help":59527,"description":59507,"open_in_new":59541,"save_as":60256,"file_open":60147,"delete":59506,"refresh":58837,"arrow_back":58820,"arrow_forward":58824,"colorize":58296,"menu_book":59929,"gif_box":59299,"text_fields":57954,"format_bold":57912,"format_italic":57919,"folder":58055,"create_new_folder":58060};
+const SYM = {"info":59534,"share":59405,"zoom_out":59648,"zoom_in":59647,"crop_rotate":58423,"resize":63239,"tune":58409,"draw":59206,"undo":57702,"redo":57690,"more_vert":58836,"arrow_drop_down":58821,"chevron_left":58376,"chevron_right":58377,"lock":59533,"lock_open":59544,"rotate_left":58393,"rotate_right":58394,"flip":58344,"ink_highlighter":59089,"ink_eraser":59088,"ink_pen":59091,"edit":57680,"broken_image":58285,"folder_open":58056,"image":57937,"check":58826,"close":57676,"photo_library":58387,"add_photo_alternate":58430,"print":58709,"save":57697,"content_paste":57679,"aspect_ratio":59483,"crop":58302,"restart_alt":61523,"document_scanner":58874,"palette":58295,"keyboard":58130,"help":59527,"description":59507,"open_in_new":59541,"save_as":60256,"file_open":60147,"delete":59506,"refresh":58837,"arrow_back":58820,"arrow_forward":58824,"colorize":58296,"menu_book":59929,"gif_box":59299,"text_fields":57954,"format_bold":57912,"format_italic":57919,"folder":58055,"create_new_folder":58060,"fullscreen":58832,"fullscreen_exit":58833,"content_copy":57677};
 const sym = n => String.fromCodePoint(SYM[n]);
 const lineIcon = w => `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><line x1="6" y1="18" x2="18" y2="6" stroke="currentColor" stroke-width="${w}" stroke-linecap="round"/></svg>`;
 const paintIcons = (root = document) => $$('md-icon[data-i]', root).forEach(el => { el.textContent = sym(el.dataset.i); });
@@ -1482,10 +1482,11 @@ document.addEventListener('keydown', e => {
   else if (k === '-') zoomBy(1 / 1.25);
   else if (k === '0') zoomAt(S.fit);
   else if (k === 'i') setTool('info');
+  else if (k === 'f') toggleFs();
   else if (k === 'enter' && S.tool === 'crop') applyCrop();
 });
 window.addEventListener('beforeunload', e => { if (isDirty()) { e.preventDefault(); e.returnValue = ''; } });
-window.addEventListener('contextmenu', e => { if (S.tool === 'draw') e.preventDefault(); });
+
 
 /* ============================================================
    Khởi động
@@ -1494,6 +1495,75 @@ setState('gallery');
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
   navigator.serviceWorker.register('sw.js').catch(() => { /* bỏ qua */ });
 }
+
+/* ============================================================
+   Toàn màn hình + menu chuột phải tùy chỉnh
+   ============================================================ */
+const isFs = () => !!document.fullscreenElement;
+function toggleFs() {
+  if (isFs()) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen().catch(() => toast('Không thể bật toàn màn hình'));
+}
+document.addEventListener('fullscreenchange', () => {
+  const b = $('#btnFs'); b.querySelector('md-icon').dataset.i = isFs() ? 'fullscreen_exit' : 'fullscreen';
+  paintIcons(b); b.dataset.tip = isFs() ? 'Thoát toàn màn hình' : 'Toàn màn hình'; b.setAttribute('aria-label', b.dataset.tip);
+  $('#ctxMenu').open = false; layout();
+});
+$('#btnFs').onclick = toggleFs;
+
+const cm = $('#ctxMenu'), ctxAnchor = $('#ctxAnchor');
+async function copyImage() {
+  try {
+    const f = S.files[S.idx], blob = (!isDirty() && f.file && f.file.type === 'image/png') ? f.file : await encode('image/png');
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    toast('Đã sao chép ảnh vào bộ nhớ tạm');
+  } catch (e) { toast('Không thể sao chép ảnh này'); }
+}
+function ctxItems(e) {
+  const st = app.dataset.state, tile = e.target.closest && e.target.closest('.tile');
+  const it = (icon, label, fn, opt = {}) => ({ icon, label, fn, ...opt });
+  if (st === 'gallery') {
+    const out = [];
+    if (tile) out.push(it('image', 'Mở', () => openFromGallery(+tile.dataset.i, tile)), 'sep');
+    out.push(it('refresh', 'Làm mới', () => refreshGallery()), it('create_new_folder', 'Thêm thư mục ảnh...', pickDir), it('folder_open', 'Quản lý thư mục ảnh', manageDirs), 'sep', it('', 'Mở ảnh...', pickFiles));
+    return out;
+  }
+  if (st === 'image') {
+    const edit = !S.anim, drawing = S.tool === 'draw';
+    const out = [
+      it('info', 'Thông tin', () => setTool('info'), { on: S.tool === 'info' }),
+      it('content_copy', 'Sao chép ảnh', copyImage),
+      it('share', 'Chia sẻ', share), 'sep',
+      it('zoom_in', 'Phóng to', () => zoomBy(1.25)), it('zoom_out', 'Thu nhỏ', () => zoomBy(1 / 1.25), { off: S.scale <= S.fit * 1.001 }),
+      it('', 'Vừa khung', () => zoomAt(S.fit)),
+      it(isFs() ? 'fullscreen_exit' : 'fullscreen', isFs() ? 'Thoát toàn màn hình' : 'Toàn màn hình', toggleFs), 'sep',
+      it('edit', 'Đổi tên', startRename, { off: drawing })
+    ];
+    if (S.back) out.push(it('arrow_back', 'Quay lại thư viện', goBack));
+    out.push('sep', it('delete', 'Xóa', deleteCurrent, { off: !canDelete(), danger: true }));
+    return out;
+  }
+  return [it('', 'Mở ảnh...', pickFiles), it('folder_open', 'Mở thư mục...', pickDir), 'sep', it(isFs() ? 'fullscreen_exit' : 'fullscreen', isFs() ? 'Thoát toàn màn hình' : 'Toàn màn hình', toggleFs)];
+}
+window.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  if ($('#dlg').open || S.tool === 'draw' || e.target.closest('#textBox')) return;
+  const items = ctxItems(e);
+  cm.open = false; cm.textContent = '';
+  items.forEach(i => {
+    if (i === 'sep') { const d = document.createElement('md-divider'); d.setAttribute('role', 'separator'); cm.appendChild(d); return; }
+    const m = document.createElement('md-menu-item'); m.disabled = !!i.off;
+    if (i.danger) m.style.setProperty('--md-menu-item-label-text-color', 'var(--md-sys-color-error)');
+    m.innerHTML = `${i.icon ? `<md-icon slot="start" data-i="${i.icon}"></md-icon>` : '<span slot="start" class="ctxgap"></span>'}<div slot="headline">${esc(i.label)}</div>`;
+    m.addEventListener('click', () => setTimeout(i.fn, 0));
+    cm.appendChild(m);
+  });
+  paintIcons(cm);
+  const eh = items.reduce((n, i) => n + (i === 'sep' ? 18 : 48), 24);
+  ctxAnchor.style.left = Math.max(8, Math.min(e.clientX, innerWidth - 236)) + 'px'; ctxAnchor.style.top = Math.max(8, Math.min(e.clientY, innerHeight - eh - 8)) + 'px';
+  requestAnimationFrame(() => { cm.open = true; });
+}, true);
+
 /* Cho phép kiểm thử tự động */
 window.__photos = { S, GAL, openList, setTool };
 })();

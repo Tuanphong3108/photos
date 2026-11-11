@@ -600,3 +600,6 @@ img, picture, svg, canvas { -webkit-user-drag: none; user-select: none; -webkit-
   .tb-left > #fileName, .tb-left > #fileCount { display: none; }
   #galTitle { font-size: 22px; }
 }
+#ctxAnchor { position: fixed; width: 0; height: 0; pointer-events: none; z-index: 90; }
+#ctxMenu { min-width: 220px; }
+.ctxgap { display: inline-block; width: 24px; }

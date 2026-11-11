@@ -36,6 +36,7 @@
       <md-icon-button id="btnShare" data-tip="Chia sẻ" aria-label="Chia sẻ"><md-icon data-i="share"></md-icon></md-icon-button>
       <md-icon-button id="btnZoomOut" data-tip="Thu nhỏ" aria-label="Thu nhỏ"><md-icon data-i="zoom_out"></md-icon></md-icon-button>
       <md-icon-button id="btnZoomIn" data-tip="Phóng to" aria-label="Phóng to"><md-icon data-i="zoom_in"></md-icon></md-icon-button>
+      <md-icon-button id="btnFs" data-tip="Toàn màn hình" aria-label="Toàn màn hình"><md-icon data-i="fullscreen"></md-icon></md-icon-button>
       <span class="sep"></span>
       <md-icon-button id="btnCrop" data-tip="Cắt và xoay" aria-label="Cắt và xoay"><md-icon data-i="crop_rotate"></md-icon></md-icon-button>
       <md-icon-button id="btnResize" data-tip="Đổi kích thước" aria-label="Đổi kích thước"><md-icon data-i="resize"></md-icon></md-icon-button>
@@ -232,6 +233,8 @@
   <div slot="content" id="dlgBody" class="dlg-body"></div>
   <div slot="actions" id="dlgActions"></div>
 </md-dialog>
+<span id="ctxAnchor"></span>
+<md-menu id="ctxMenu" anchor="ctxAnchor" positioning="fixed" anchor-corner="start-start" menu-corner="start-start"></md-menu>
 <div id="tip" hidden></div>
 <div id="toast" hidden></div>
 <div id="printWrap"><img id="printImg" alt=""></div>
