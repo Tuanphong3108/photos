@@ -786,6 +786,20 @@ async function endRename(commit) {
   renameF.hidden = true; nameEl.hidden = false; $('#fileCount').hidden = false;
   if (commit) await renameCurrent(v);
 }
+
+/* Tệp mở lẻ (Mở / bấm đúp từ Files) không có thư mục cha → xin quyền thư mục chứa tệp để đổi tên */
+let lastDir = null;
+async function ensureDir(f) {
+  const same = async d => { try { return await (await d.getFileHandle(f.name)).isSameEntry(f.handle); } catch (e) { return false; } };
+  if (lastDir && await same(lastDir)) return lastDir;
+  if (!window.showDirectoryPicker) return null;
+  const ok = await dialog('Cấp quyền thư mục', 'Để đổi tên ảnh này, Photos cần quyền truy cập thư mục chứa nó. Hãy chọn thư mục chứa <b>' + esc(f.name) + '</b>.', [{ label: 'Hủy', value: 'no' }, { label: 'Chọn thư mục', value: 'ok', primary: true }]);
+  if (ok !== 'ok') return null;
+  let d;
+  try { d = await window.showDirectoryPicker({ mode: 'readwrite', startIn: f.handle }); } catch (e) { return null; }
+  if (!(await same(d))) { toast('Thư mục đã chọn không chứa ảnh này'); return null; }
+  return (lastDir = d);
+}
 async function renameCurrent(raw) {
   const f = S.files[S.idx]; if (!f) return false;
   const [stem, ext] = splitName(f.name), base = raw.trim();
@@ -803,12 +817,18 @@ async function renameCurrent(raw) {
       if (h.queryPermission && (await h.queryPermission({ mode: 'readwrite' })) !== 'granted') {
         if ((await h.requestPermission({ mode: 'readwrite' })) !== 'granted') throw new Error('perm');
       }
-      if (typeof h.move === 'function') await h.move(name);
-      else if (f.dir) {
-        const blob = await h.getFile(), nh = await f.dir.getFileHandle(name, { create: true });
+      let done = false;
+      if (typeof h.move === 'function') { try { await h.move(name); done = true; } catch (e) { /* tệp chọn lẻ thường không hỗ trợ move → dùng thư mục */ } }
+      if (!done) {
+        const dir = f.dir || await ensureDir(f);
+        if (!dir) return false;
+        let exists = true;
+        try { await dir.getFileHandle(name); } catch (e) { if (e.name === 'NotFoundError') exists = false; else throw e; }
+        if (exists && name.toLowerCase() !== old.toLowerCase()) { toast('Đã có tệp trùng tên'); return false; }
+        const blob = await h.getFile(), nh = await dir.getFileHandle(name, { create: true });
         const w = await nh.createWritable(); await w.write(blob); await w.close();
-        await f.dir.removeEntry(old); f.handle = nh;
-      } else throw new Error('unsupported');
+        await dir.removeEntry(old); f.handle = nh; f.dir = dir;
+      }
     }
   } catch (e) { toast('Không thể đổi tên tệp này'); return false; }
   f.name = name;
