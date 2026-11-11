@@ -1,6 +1,6 @@
 # 🖼️ Photos
 
-> Trình xem và chỉnh sửa ảnh cục bộ (Client-side), lấy cảm hứng từ **ChromeOS Gallery**, với giao diện **Material Design 3 Expressive**. Mở, xem và chỉnh sửa hình ảnh ngay trên trình duyệt mà không cần tải ảnh lên máy chủ hay cài đặt phần mềm phức tạp.
+> Ứng dụng thư viện, xem và chỉnh sửa ảnh cục bộ (Client-side), lấy cảm hứng từ **ChromeOS Gallery**, với giao diện **Material Design 3 Expressive**. Duyệt, quản lý, xem và chỉnh sửa hình ảnh ngay trên trình duyệt mà không cần tải ảnh lên máy chủ.
 
 ---
 
@@ -8,7 +8,7 @@
 
 - 🌐 **Live App:** [Photos](https://tuanphong3108.github.io/photos/)
 
-> ⚠️ **Lưu ý:** Photos xử lý hình ảnh trực tiếp trên thiết bị. Một số tính năng như mở thư mục, đổi tên hoặc xóa tệp phụ thuộc vào quyền truy cập và khả năng hỗ trợ API của trình duyệt.
+> ⚠️ **Lưu ý:** Photos xử lý hình ảnh trực tiếp trên thiết bị. Một số thao tác như mở thư mục, ghi đè, đổi tên hoặc xóa tệp phụ thuộc vào quyền truy cập và khả năng hỗ trợ API của trình duyệt.
 
 ---
 
@@ -22,15 +22,28 @@
   <img src="Screenshot%202026-11-10%2015.22.43.png" width="49%" alt="Photos screenshot 15.22.43">
   <img src="Screenshot%202026-11-10%2015.22.47.png" width="49%" alt="Photos screenshot 15.22.47">
 </p>
+
 ---
 
 ## 🌟 Tính năng nổi bật
+
+### 🗂️ Thư viện ảnh (Gallery)
+
+- **Hai chế độ duyệt:** Chuyển đổi giữa tab **All** và **Files**.
+- **Sắp xếp theo thời gian:** Hiển thị ảnh theo các nhóm tháng/năm.
+- **Tìm kiếm:** Tìm ảnh theo tên hoặc ngày.
+- **Duyệt thư mục:** Xem nội dung thư mục, hiển thị tiêu đề thư mục và quay lại bằng nút Back.
+- **Chọn nhiều ảnh:** Bật chế độ chọn để thao tác với nhiều mục.
+- **Quản lý tệp:** Sao chép, cắt, dán và xóa ảnh.
+- **Menu ngữ cảnh:** Nhấp chuột phải vào ảnh để mở các thao tác liên quan.
+- **Thanh cuộn tùy chỉnh:** Giao diện cuộn riêng cho khu vực thư viện.
 
 ### 🖼️ Trình xem ảnh (Image Viewer)
 
 - **Mở ảnh linh hoạt:** Chọn tệp, mở cả thư mục, kéo và thả hoặc dán ảnh từ clipboard.
 - **Điều hướng ảnh:** Chuyển sang ảnh trước hoặc tiếp theo bằng nút điều khiển, phím mũi tên hoặc thao tác vuốt.
 - **Thu phóng:** Phóng to, thu nhỏ và di chuyển ảnh trong khung xem.
+- **Toàn màn hình:** Tập trung hiển thị ảnh trên nền đen; di chuyển chuột lên phía trên để hiện nút thoát.
 - **Thông tin hình ảnh:** Hiển thị tên tệp, định dạng, dung lượng, ngày chỉnh sửa và kích thước ảnh.
 - **EXIF Metadata:** Đọc thông tin máy ảnh và dữ liệu chụp ảnh khi tệp có chứa metadata tương ứng.
 - **Hỗ trợ ảnh động:** Xem GIF, APNG và Animated WebP.
@@ -45,13 +58,21 @@
 - **Chọn màu tùy chỉnh:** Sử dụng bộ chọn màu cho công cụ chú thích.
 - **Undo / Redo:** Hoàn tác và làm lại các thao tác chỉnh sửa.
 
-### 💾 Lưu và chia sẻ
+### 💾 Lưu và quản lý tệp
 
 - **Save:** Lưu thay đổi vào tệp gốc khi có quyền ghi phù hợp.
 - **Save As:** Xuất ảnh thành PNG, JPEG hoặc WebP.
 - **Print:** In hình ảnh trực tiếp.
 - **Share:** Chia sẻ ảnh thông qua các API được trình duyệt hỗ trợ.
-- **Quản lý tệp:** Hỗ trợ đổi tên và xóa tệp trong những trường hợp trình duyệt cấp quyền phù hợp.
+- **Thao tác với tệp lỗi:** Ngay cả khi nội dung ảnh không thể đọc được, Photos vẫn có thể hiển thị thông tin và cung cấp các thao tác như sao chép, chia sẻ, đổi tên hoặc xóa khi được cấp quyền.
+- **Quyền truy cập:** Các thao tác trên tệp phụ thuộc vào quyền mà trình duyệt cấp.
+
+### ⚡ Hiệu năng
+
+- **Lazy loading thumbnail:** Chỉ giải mã ảnh thu nhỏ khi cần hiển thị.
+- **Hủy tác vụ không cần thiết:** Dừng xử lý thumbnail khi mục ảnh đã cuộn khỏi vùng cần hiển thị.
+- **Tối ưu cho thiết bị cấu hình thấp:** Giảm số luồng xử lý ảnh thu nhỏ.
+- **Placeholder:** Hiển thị biểu tượng thay thế trong khi thumbnail đang tải hoặc khi ảnh gặp lỗi.
 
 ### 🎨 Giao diện & Trải nghiệm
 
@@ -59,6 +80,7 @@
 - **Google Sans Flex:** Sử dụng kiểu chữ Google Sans Flex.
 - **Giao diện tự động:** Tự động đồng bộ chế độ Sáng/Tối theo hệ thống.
 - **PWA:** Có thể cài đặt Photos như một ứng dụng độc lập trên trình duyệt tương thích.
+- **Tự động cập nhật:** Service Worker kiểm tra phiên bản mới và tự cập nhật ứng dụng khi có bản mới.
 
 ---
 
@@ -93,19 +115,19 @@ Sau khi cài đặt, Photos có thể được mở như một ứng dụng đ�
 Không cần Node.js hay build tool phức tạp.
 
 1. Clone repository:
-   ```
+   ```bash
    git clone https://github.com/Tuanphong3108/photos.git
    ```
 2. Truy cập thư mục dự án:
-   ```
+   ```bash
    cd photos
    ```
 3. Khởi chạy máy chủ HTTP:
-   ```
+   ```bash
    python3 -m http.server
    ```
 4. Mở trình duyệt và truy cập:
-   ```
+   ```text
    http://localhost:8000
    ```
 
