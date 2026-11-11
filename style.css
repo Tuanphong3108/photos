@@ -709,3 +709,6 @@ img, picture, svg, canvas { -webkit-user-drag: none; user-select: none; -webkit-
   transition: opacity .2s var(--emph), transform .35s var(--spring);
 }
 #galScroll.drag #galBubble.has { opacity: 1; transform: none; }
+.tile.bad::before { content: none; }
+.tile.bad img { object-fit: contain; padding: 14%; border-radius: 0; }
+.tile.bad.sel img { transform: scale(.86); }

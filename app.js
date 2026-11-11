@@ -985,11 +985,15 @@ async function makeThumb(it) {
   if (!blob) throw new Error('thumb');
   return { url: URL.createObjectURL(blob), ratio: w / h };
 }
+const darkMQ = matchMedia('(prefers-color-scheme: dark)');
+const errSrc = () => darkMQ.matches ? 'images/error-dark.png' : 'images/error.png';
+function markBad(t) { t.classList.add('bad', 'ready'); t.firstChild.src = errSrc(); }
+darkMQ.addEventListener('change', () => $$('.tile.bad img', galGrid).forEach(im => { im.src = errSrc(); }));
 const tileIO = new IntersectionObserver(es => es.forEach(e => {
   if (!e.isIntersecting) return;
   const t = e.target; tileIO.unobserve(t);
   const it = GAL.shown[+t.dataset.i]; if (!it) return;
-  thumbOf(it).then(r => { const im = t.firstChild; im.src = r.url; im.onload = () => t.classList.add('ready'); }, () => t.classList.add('bad'));
+  thumbOf(it).then(r => { const im = t.firstChild; im.src = r.url; im.onload = () => t.classList.add('ready'); }, () => markBad(t));
 }), { root: gal, rootMargin: '600px' });
 
 const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').toLowerCase();
