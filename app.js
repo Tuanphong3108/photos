@@ -1516,11 +1516,11 @@ function mpSave(id, items) {
     };
   });
 }
-/* Mở / focus Media Player đã cài (PWA) qua protocol handler web+mediaplayer trong manifest của nó.
-   Media Player tự ghi cờ mp_pwa=1 (localStorage cùng origin) khi chạy ở chế độ ứng dụng. */
+/* Mở / focus Media Player: dùng link <a target=_blank rel=noopener> (không phải window.open) vì Chrome chỉ cho PWA đã cài
+   "bắt" (link capturing) những điều hướng không tạo auxiliary browsing context. Media Player có launch_handler focus-existing. */
 const mpInstalled = () => { try { return localStorage.getItem('mp_pwa') === '1'; } catch (e) { return false; } };
-function launchMPApp() {
-  const a = document.createElement('a'); a.href = 'web+mediaplayer:open'; a.style.display = 'none';
+function openLink(url) {
+  const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.style.display = 'none';
   document.body.appendChild(a); a.click(); a.remove();
 }
 async function openInMP(list) {
@@ -1539,17 +1539,11 @@ async function openInMP(list) {
   try { bc && bc.postMessage({ type: 'enqueue', id, handles: items }); } catch (e) { /* bỏ qua */ }
   if (await p1) {
     toast(items.length > 1 ? `Đã gửi ${items.length} tệp sang Media Player` : 'Đã thêm vào danh sách phát của Media Player');
-    if (mpInstalled()) launchMPApp();   /* đưa cửa sổ Media Player (đang mở) lên trước */
+    if (mpInstalled()) openLink(MP_URL + '?handoff=focus');   /* đưa cửa sổ Media Player (PWA) đang mở lên trước */
     bc.close(); return;
   }
   try { await mpSave(id, items); } catch (e) { toast('Không thể gửi tệp sang Media Player'); bc && bc.close(); return; }
-  /* Luôn thử mở app (protocol handler) trước; không ai trả lời thì mới mở tab thường.
-     Chưa đăng ký protocol thì Chrome không làm gì nên fallback chạy sau ~2 giây. */
-  const p2 = waitAck(mpInstalled() ? 3000 : 2000);
-  launchMPApp();
-  if (!(await p2) && document.visibilityState === 'visible') {
-    if (!window.open(MP_URL + '?handoff=1', '_blank')) toast('Trình duyệt chặn cửa sổ mới. Hãy cho phép rồi thử lại');
-  }
+  openLink(MP_URL + '?handoff=1');   /* PWA đã cài + cho phép mở link trong app: vào thẳng app; không thì tab thường */
   bc && setTimeout(() => bc.close(), 4000);
 }
 $('#btnErrMP').onclick = () => { const f = S.files[S.idx]; if (f) openInMP([f]); };
