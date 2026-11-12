@@ -676,6 +676,8 @@ stage.addEventListener('dblclick', e => {
    ============================================================ */
 const IMG_EXT = /\.(png|jpe?g|jfif|webp|gif|bmp|avif|svg|ico|tiff?|heic|heif)$/i;
 const isImgName = n => IMG_EXT.test(n);
+const VID_EXT = /\.(mp4|m4v|webm|mkv|mov|ogv|3gp|avi)$/i;
+const isVidName = n => VID_EXT.test(n);
 const isImgFile = f => (f.type && f.type.startsWith('image/')) || isImgName(f.name);
 const natural = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
 const extMime = n => { const m = /\.([a-z0-9]+)$/i.exec(n); const e = m ? m[1].toLowerCase() : ''; return { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', jfif: 'image/jpeg', webp: 'image/webp' }[e] || null; };
@@ -685,11 +687,14 @@ const ERRORS = {
   ERR_UNSUPPORTED_TYPE: ['Định dạng không được hỗ trợ', 'Photos chưa mở được loại tệp này. Hãy thử ảnh PNG, JPEG, WebP, GIF, BMP hoặc AVIF.'],
   ERR_DECODE_FAILED: ['Không thể mở ảnh này', 'Tệp có thể bị hỏng hoặc trình duyệt không giải mã được định dạng này.'],
   ERR_FILE_READ: ['Không thể đọc tệp', 'Tệp đã bị di chuyển, xóa hoặc bạn không còn quyền truy cập.'],
+  ERR_VIDEO: ['Photos không phát video', 'Đây là tệp video. Photos chỉ dành cho ảnh, hãy mở tệp bằng Media Player để phát hoặc thêm vào danh sách phát.'],
   ERR_IMAGE_TOO_LARGE: ['Ảnh quá lớn', 'Kích thước ảnh vượt quá giới hạn mà trình duyệt có thể xử lý (16384 px mỗi cạnh).']
 };
 function showError(code, name) {
   const [t, d] = ERRORS[code] || ERRORS.ERR_DECODE_FAILED;
+  const vid = code === 'ERR_VIDEO';
   $('#errTitle').textContent = t; $('#errText').textContent = name ? `${name}: ${d}` : d; $('#errCode').textContent = code;
+  $('#error').classList.toggle('vid', vid);
   S.H = []; S.hi = -1; S.iw = S.ih = S.lastW = S.lastH = 0;
   if (S.tool && S.tool !== 'info') setTool(S.tool);
   setState('error'); updateInfo();
@@ -730,6 +735,7 @@ async function openIndex(i, force) {
   const token = ++S.token, f = S.files[i];
   S.idx = i; S.exif = null;
   if (S.tool === 'draw') setTool('');
+  if (isVidName(f.name)) { if (S.animUrl) { URL.revokeObjectURL(S.animUrl); S.animUrl = ''; gifImg.removeAttribute('src'); } S.anim = false; showError('ERR_VIDEO', f.name); return; }
   setState('loading'); updateUI();
   let file;
   try { file = f.handle ? await f.handle.getFile() : f.file; f.file = file; }
@@ -921,7 +927,7 @@ const gal = $('#gallery'), galGrid = $('#galGrid');
 
 async function walk(dh, root, path, out, depth = 0) {
   for await (const h of dh.values()) {
-    if (h.kind === 'file') { if (isImgName(h.name)) out.push({ handle: h, name: h.name, dir: dh, root, path: [...path, h.name] }); }
+    if (h.kind === 'file') { const v = isVidName(h.name); if (v || isImgName(h.name)) out.push({ handle: h, name: h.name, dir: dh, root, path: [...path, h.name], vid: v }); }
     else if (depth < 10 && !SKIP_DIR.test(h.name)) { try { await walk(h, root, [...path, h.name], out, depth + 1); } catch (e) { /* bỏ qua thư mục không đọc được */ } }
   }
 }
@@ -991,6 +997,7 @@ async function makeThumb(it) {
 }
 const darkMQ = matchMedia('(prefers-color-scheme: dark)');
 const errSrc = () => darkMQ.matches ? 'images/error-dark.png' : 'images/error.png';
+function markVid(t) { t.classList.add('vid', 'ready'); t.firstChild.src = 'images/media-player.png'; }
 function markBad(t) { t.classList.add('bad', 'ready'); t.firstChild.src = errSrc(); }
 darkMQ.addEventListener('change', () => $$('.tile.bad img', galGrid).forEach(im => { im.src = errSrc(); }));
 /* Tải lười: chỉ giải mã ảnh thu nhỏ của ô đang (hoặc sắp) hiện trên màn hình; ô cuộn qua nhanh thì hủy khỏi hàng đợi */
@@ -998,6 +1005,7 @@ function reqThumb(t) {
   const it = GAL.shown[+t.dataset.i];
   if (!it || t.dataset.ld || t.classList.contains('ready') || t.classList.contains('bad')) return;
   t.dataset.ld = '1';
+  if (it.vid) { markVid(t); return; }
   thumbOf(it).then(r => { const im = t.firstChild; im.src = r.url; im.onload = () => t.classList.add('ready'); }, () => markBad(t));
 }
 function cancelThumb(t) {
@@ -1322,7 +1330,7 @@ async function openFromGallery(i, tile) {
     S.files = GAL.shown; S.back = true;
     const im = tile.firstChild, wr = $('#workspace').getBoundingClientRect();
     let fly = null, anim = null;
-    if (tile.classList.contains('ready') && im.naturalWidth) {
+    if (tile.classList.contains('ready') && !tile.classList.contains('vid') && im.naturalWidth) {
       const r0 = tile.getBoundingClientRect(), box = fitBox(wr, im.naturalWidth / im.naturalHeight, 16);
       fly = document.createElement('img'); fly.className = 'fly'; fly.src = im.src; fly.alt = ''; fly.draggable = false;
       Object.assign(fly.style, px(r0), { borderRadius: '16px' });
@@ -1491,6 +1499,43 @@ $('#fileInput').addEventListener('change', e => {
   e.target.value = ''; if (l.length) { S.H = []; openList(l); }
 });
 ['btnOpenEmpty', 'btnErrOpen'].forEach(id => $('#' + id).onclick = pickFiles);
+
+/* ---- Mở bằng Media Player (cùng origin github.io nên dùng chung BroadcastChannel / IndexedDB) ----
+   1) Media Player đang mở: gửi handle qua BroadcastChannel, nó trả "ack" và thêm vào danh sách phát.
+   2) Chưa mở: lưu handle vào IndexedDB 'media-handoff' rồi mở Media Player, nó tự đọc và thêm vào. */
+const MP_URL = new URL('../music-player/index.html', location.href).href;
+function mpSave(items) {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('media-handoff', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('queue', { autoIncrement: true });
+    r.onerror = () => rej(r.error);
+    r.onsuccess = () => {
+      const db = r.result, t = db.transaction('queue', 'readwrite');
+      t.objectStore('queue').add({ t: Date.now(), items });
+      t.oncomplete = () => { db.close(); res(); }; t.onerror = t.onabort = () => rej(t.error);
+    };
+  });
+}
+async function openInMP(list) {
+  const items = [];
+  for (const f of list) { const h = f && (f.handle || f.file); if (h) items.push(h); }
+  if (!items.length) { toast('Không có tệp để mở'); return; }
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  let acked = false;
+  try {
+    const bc = new BroadcastChannel('media-player-handoff');
+    acked = await new Promise(res => {
+      const t = setTimeout(() => res(false), 900);
+      bc.onmessage = e => { if (e.data && e.data.type === 'ack' && e.data.id === id) { clearTimeout(t); res(true); } };
+      try { bc.postMessage({ type: 'enqueue', id, handles: items }); } catch (err) { clearTimeout(t); res(false); }
+    });
+    bc.close();
+  } catch (e) { /* trình duyệt không hỗ trợ: dùng cách 2 */ }
+  if (acked) { toast(items.length > 1 ? `Đã gửi ${items.length} tệp sang Media Player` : 'Đã thêm vào danh sách phát của Media Player'); return; }
+  try { await mpSave(items); } catch (e) { toast('Không thể gửi tệp sang Media Player'); return; }
+  if (!window.open(MP_URL + '?handoff=1', '_blank')) toast('Trình duyệt chặn cửa sổ mới. Hãy cho phép rồi thử lại');
+}
+$('#btnErrMP').onclick = () => { const f = S.files[S.idx]; if (f) openInMP([f]); };
 $('#btnOpenDirEmpty').onclick = pickDir;
 
 /* Không cho kéo ảnh / phần tử ra ngoài (tránh bóng mờ của Chrome khi kéo) */
@@ -1765,7 +1810,7 @@ const HELP_HTML = `
 
 <h3>Ứng dụng liên quan</h3>
 <ul>
-  <li><b>Media Player:</b> dùng để phát nhạc và video. Photos tập trung vào quản lý, xem và chỉnh sửa hình ảnh; hãy sử dụng Media Player cho nội dung âm thanh và video. <a href="https://tuanphong3108.github.io/music-player/" target="_blank" rel="noopener noreferrer">Mở Media Player</a>.</li>
+  <li><b>Media Player:</b> dùng để phát nhạc và video. Photos tập trung vào quản lý, xem và chỉnh sửa hình ảnh. Video vẫn hiện trong thư viện: bấm vào tệp video rồi chọn <b>Mở bằng Media Player</b> để thêm vào danh sách phát (chuột phải cũng có tùy chọn này). <a href="https://tuanphong3108.github.io/music-player/" target="_blank" rel="noopener noreferrer">Mở Media Player</a>.</li>
 </ul>
 
 <h3>Lưu ý</h3>
@@ -1927,11 +1972,15 @@ function ctxItems(e) {
       const targets = GAL.sel.has(it0) ? [...GAL.sel] : [it0], n = targets.length;
       out.push(it(GAL.sel.has(it0) ? 'check_circle' : 'check_circle', GAL.sel.has(it0) ? 'Bỏ chọn' : 'Chọn', () => toggleSel(it0, tile)), 'sep');
       if (files) out.push(it('content_copy', `Sao chép${n > 1 ? ' (' + n + ')' : ''}`, () => setClip('copy', targets)), it('content_cut', `Cắt${n > 1 ? ' (' + n + ')' : ''}`, () => setClip('cut', targets)));
+      const vids = targets.filter(x => x.vid);
+      if (vids.length) out.push(it('open_in_new', `Thêm vào Media Player${vids.length > 1 ? ' (' + vids.length + ')' : ''}`, () => openInMP(vids)));
       out.push(it('delete', `Xóa${n > 1 ? ' (' + n + ')' : ''}`, () => deleteItems(targets), { danger: true }));
       return out;
     }
     if (it0) {
-      out.push(it('image', 'Mở', () => openFromGallery(+tile.dataset.i, tile)), 'sep');
+      out.push(it('image', 'Mở', () => openFromGallery(+tile.dataset.i, tile)));
+      if (it0.vid) out.push(it('open_in_new', 'Mở bằng Media Player', () => openInMP([it0])));
+      out.push('sep');
       if (files) out.push(it('content_copy', 'Sao chép', () => setClip('copy', [it0])), it('content_cut', 'Cắt', () => setClip('cut', [it0])), 'sep');
       out.push(it('edit', 'Đổi tên', () => renameItemDialog(it0)), it('info', 'Thông tin ảnh', () => infoItemDialog(it0)),
         it('check_circle', 'Chọn', () => { setSelecting(true); toggleSel(it0, tile); }), 'sep',
@@ -1943,6 +1992,7 @@ function ctxItems(e) {
   }
   if (st === 'error' && hasFile()) {
     const out = [it('info', 'Thông tin', () => setTool('info'), { on: S.tool === 'info' }), it('content_copy', 'Sao chép tệp', copyRawFile), it('share', 'Chia sẻ', share), 'sep',
+      ...(isVidName(S.files[S.idx].name) ? [it('open_in_new', 'Mở bằng Media Player', () => openInMP([S.files[S.idx]])), 'sep'] : []),
       it('edit', 'Đổi tên', startRename)];
     if (S.back) out.push(it('arrow_back', 'Quay lại thư viện', goBack));
     out.push('sep', it('delete', 'Xóa', deleteCurrent, { off: !canDelete(), danger: true }));
@@ -1985,5 +2035,5 @@ window.addEventListener('contextmenu', e => {
 }, true);
 
 /* Cho phép kiểm thử tự động */
-window.__photos = { S, GAL, openList, setTool };
+window.__photos = { S, GAL, openList, setTool, refreshGallery };
 })();
