@@ -234,8 +234,9 @@ function updateUI() {
   const f = S.files[S.idx];
   $('#fileName').textContent = f && img ? f.name : (f ? f.name : '');
   $('#fileCount').textContent = S.files.length > 1 && f ? `${S.idx + 1} / ${S.files.length}` : '';
-  $('#navPrev').hidden = !(img && S.idx > 0);
-  $('#navNext').hidden = !(img && S.idx < S.files.length - 1);
+  const navOn = img || st === 'error';
+  $('#navPrev').hidden = !(navOn && S.idx > 0);
+  $('#navNext').hidden = !(navOn && S.idx < S.files.length - 1);
   document.title = st === 'gallery' ? 'Thư viện ảnh - Photos' : f ? `${f.name} - Photos` : 'Photos';
   try { syncGalHeader(); } catch (e) { /* GAL chưa khởi tạo */ }
   $('#cropBox').hidden = !(img && S.tool === 'crop');
@@ -695,6 +696,8 @@ function showError(code, name) {
   const vid = code === 'ERR_VIDEO';
   $('#errTitle').textContent = t; $('#errText').textContent = name ? `${name}: ${d}` : d; $('#errCode').textContent = code;
   $('#error').classList.toggle('vid', vid);
+  const bg = $('#errBg'); bg.style.backgroundImage = '';
+  if (vid) { const f = S.files[S.idx]; if (f) thumbOf(f).then(r => { if (S.files[S.idx] === f && $('#error').classList.contains('vid')) bg.style.backgroundImage = `url(${r.url})`; }, () => {}); }
   S.H = []; S.hi = -1; S.iw = S.ih = S.lastW = S.lastH = 0;
   if (S.tool && S.tool !== 'info') setTool(S.tool);
   setState('error'); updateInfo();
@@ -979,8 +982,32 @@ function pump() {
     makeThumb(j.it).then(j.res, j.rej).finally(() => { tact--; setTimeout(pump, 0); });
   }
 }
+/* Chụp 1 khung hình của video (tối đa ~5 giây; codec không giải mã được thì báo lỗi) */
+function videoFrame(file) {
+  return new Promise((res, rej) => {
+    const u = URL.createObjectURL(file), v = document.createElement('video');
+    v.muted = true; v.preload = 'auto'; v.playsInline = true;
+    let done = false;
+    const end = (ok, val) => { if (done) return; done = true; clearTimeout(t); v.removeAttribute('src'); v.load(); URL.revokeObjectURL(u); ok ? res(val) : rej(new Error('vthumb')); };
+    const t = setTimeout(() => end(false), 5000);
+    v.onerror = () => end(false);
+    v.onloadedmetadata = () => { try { v.currentTime = Math.min(1, (v.duration || 2) * 0.1); } catch (e) { end(false); } };
+    v.onseeked = () => {
+      if (!v.videoWidth) return end(false);
+      const w = 400, h = Math.max(1, Math.round(w * v.videoHeight / v.videoWidth)), c = mk(w, h);
+      try { c.getContext('2d').drawImage(v, 0, 0, w, h); end(true, c); } catch (e) { end(false); }
+    };
+    v.src = u;
+  });
+}
 async function makeThumb(it) {
-  const file = await it.handle.getFile();
+  const file = it.file || await it.handle.getFile();
+  if (it.vid) {
+    const c = await videoFrame(file);
+    const blob = await new Promise(r => c.toBlob(r, 'image/webp', .82));
+    if (!blob) throw new Error('thumb');
+    return { url: URL.createObjectURL(blob), ratio: c.width / c.height };
+  }
   let src;
   try { src = await createImageBitmap(file, { resizeWidth: 400, resizeQuality: 'medium' }); }
   catch (e) {
@@ -997,7 +1024,7 @@ async function makeThumb(it) {
 }
 const darkMQ = matchMedia('(prefers-color-scheme: dark)');
 const errSrc = () => darkMQ.matches ? 'images/error-dark.png' : 'images/error.png';
-function markVid(t) { t.classList.add('vid', 'ready'); t.firstChild.src = 'images/media-player.png'; }
+function markVid(t) { t.classList.add('vidx', 'ready'); t.firstChild.src = 'images/media-player.png'; }
 function markBad(t) { t.classList.add('bad', 'ready'); t.firstChild.src = errSrc(); }
 darkMQ.addEventListener('change', () => $$('.tile.bad img', galGrid).forEach(im => { im.src = errSrc(); }));
 /* Tải lười: chỉ giải mã ảnh thu nhỏ của ô đang (hoặc sắp) hiện trên màn hình; ô cuộn qua nhanh thì hủy khỏi hàng đợi */
@@ -1005,8 +1032,7 @@ function reqThumb(t) {
   const it = GAL.shown[+t.dataset.i];
   if (!it || t.dataset.ld || t.classList.contains('ready') || t.classList.contains('bad')) return;
   t.dataset.ld = '1';
-  if (it.vid) { markVid(t); return; }
-  thumbOf(it).then(r => { const im = t.firstChild; im.src = r.url; im.onload = () => t.classList.add('ready'); }, () => markBad(t));
+  thumbOf(it).then(r => { const im = t.firstChild; im.src = r.url; im.onload = () => t.classList.add('ready'); }, () => (it.vid ? markVid(t) : markBad(t)));
 }
 function cancelThumb(t) {
   if (!t.dataset.ld || t.classList.contains('ready') || t.classList.contains('bad')) return;
@@ -1108,6 +1134,7 @@ function renderGallery() {
     const ck = document.createElement('span'); ck.className = 'chk'; ck.innerHTML = '<md-icon data-i="check_circle"></md-icon>';
     const ph = document.createElement('md-icon'); ph.className = 'ph'; ph.dataset.i = 'image';
     b.append(im, ph, ck); frag.appendChild(b); it.el = b;
+    if (it.vid) { b.classList.add('vid'); const vb = document.createElement('img'); vb.className = 'vbadge'; vb.src = 'images/media-player.png'; vb.alt = ''; vb.draggable = false; b.appendChild(vb); }
   });
   let shown = [], msg = '';
   GAL.tree = buildTree();
