@@ -14,13 +14,13 @@
     --primary:#a8c7fa; --on-primary:#062e6f; --pc:#0842a0; --on-pc:#d3e3fd;
     --sc:#3e4759; --on-sc:#dae2f9; --surface:#15191f; --on-surface:#e2e2e9; --on-var:#c4c6d0;
     --c1:#191c22; --c2:#272a31; --c3:#32353c; --outline:#8e9099;
-    --glow:#0842a0;
+    --glow:#0842a0; --wc:#5c4300; --on-wc:#ffdf9e;
     --spring:cubic-bezier(.34,1.56,.64,1); --ease:cubic-bezier(.2,0,0,1);
     --font:"Google Sans Flex","Google Sans",Roboto,system-ui,sans-serif;
   }
   @media (prefers-color-scheme: light) {
     :root { --primary:#0b57d0; --on-primary:#fff; --pc:#d3e3fd; --on-pc:#041e49; --sc:#dae2f9; --on-sc:#131c2b;
-      --surface:#f8fafd; --on-surface:#1f1f1f; --on-var:#444746; --c1:#f3f6fc; --c2:#e7ebf3; --c3:#e0e5ee; --outline:#747775; --glow:#d3e3fd; }
+      --surface:#f8fafd; --on-surface:#1f1f1f; --on-var:#444746; --c1:#f3f6fc; --c2:#e7ebf3; --c3:#e0e5ee; --outline:#747775; --glow:#d3e3fd; --wc:#ffe9b3; --on-wc:#3b2900; }
   }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { margin:0; height:100%; }
@@ -61,6 +61,9 @@
   kbd { font:600 12px ui-monospace,Menlo,Consolas,monospace; padding:3px 8px; border-radius:8px; background:var(--c3); color:var(--on-surface); box-shadow:0 2px 0 var(--outline); }
   .note { display:flex; align-items:center; gap:12px; padding:14px 18px; border-radius:22px; background:var(--sc); color:var(--on-sc); font-size:13px; line-height:1.5; }
   .note .ms { color:var(--primary); flex-shrink:0; }
+  .warn { background:var(--wc); color:var(--on-wc); align-items:flex-start; }
+  .warn .ms { color:var(--on-wc); }
+  .warn b { font-weight:700; } .warn a { color:inherit; font-weight:700; text-underline-offset:3px; }
   .keys { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
   .key { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 18px; border-radius:20px; background:var(--c1); font-size:13px; font-weight:600; }
   .key .k { display:flex; gap:6px; align-items:center; flex-shrink:0; }
@@ -102,6 +105,7 @@
         <div class="card"><div class="ico"><span class="ms" data-ic="photo_library"></span></div><h3>Thư viện ảnh &amp; Files UI</h3><p>Xem tất cả ảnh sắp theo ngày, hoặc chuyển sang tab Files UI để duyệt theo cây thư mục.</p></div>
         <div class="card"><div class="ico"><span class="ms" data-ic="drag_pan"></span></div><h3>Kéo &amp; thả</h3><p>Kéo ảnh hoặc cả thư mục vào cửa sổ, hoặc dán ảnh từ clipboard bằng <kbd>Ctrl</kbd> + <kbd>V</kbd>.</p></div>
       </div>
+      <div class="note warn"><span class="ms" data-ic="warning"></span><span><b>Photos không phát video.</b> Ứng dụng chỉ dành cho ảnh: các tệp video (mp4, webm, mkv, mov...) và âm thanh sẽ không mở được hoặc hiện biểu tượng lỗi. Hãy dùng <a href="https://tuanphong3108.github.io/music-player/" target="_blank" rel="noopener noreferrer">Media Player</a> để phát nhạc và video.</span></div>
       <div class="note"><span class="ms" data-ic="offline_bolt"></span><span>Cài Photos như một ứng dụng để mở ảnh trực tiếp bằng "Mở bằng Photos" trong trình quản lý tệp và dùng offline.</span></div>
     </div></section>
 
@@ -153,7 +157,7 @@
 </div>
 <script>
 (function () {
-  var IC = {"photo_library": 58387, "rocket_launch": 60315, "folder_open": 58056, "drag_pan": 63262, "search": 59574, "select_all": 57698, "edit": 57680, "crop_rotate": 58423, "text_fields": 57954, "tune": 58409, "keyboard": 58130, "fullscreen": 58832, "content_copy": 57677, "offline_bolt": 59698, "auto_awesome": 58975, "arrow_back": 58820, "arrow_forward": 58824, "play_arrow": 57399, "check_circle": 59500, "add_photo_alternate": 58430, "lock": 59533, "share": 59405, "print": 58709, "touch_app": 59667, "lightbulb": 57584};
+  var IC = {"photo_library": 58387, "rocket_launch": 60315, "folder_open": 58056, "drag_pan": 63262, "search": 59574, "select_all": 57698, "edit": 57680, "crop_rotate": 58423, "text_fields": 57954, "tune": 58409, "keyboard": 58130, "fullscreen": 58832, "content_copy": 57677, "offline_bolt": 59698, "auto_awesome": 58975, "arrow_back": 58820, "arrow_forward": 58824, "play_arrow": 57399, "check_circle": 59500, "add_photo_alternate": 58430, "lock": 59533, "share": 59405, "print": 58709, "touch_app": 59667, "lightbulb": 57584, "warning": 57346, "videocam_off": 57420, "open_in_new": 59541};
   var NAMES = ['Chào mừng', 'Thêm ảnh', 'Tính năng', 'Phím tắt', 'Bắt đầu'];
   var TOTAL = 5, KEY = 'photos.gsDraft', st = { step: 0 }, picked = [];
   var $ = function (s) { return document.querySelector(s); }, $$ = function (s) { return [].slice.call(document.querySelectorAll(s)); };
