@@ -1543,11 +1543,13 @@ async function openInMP(list) {
     bc.close(); return;
   }
   try { await mpSave(id, items); } catch (e) { toast('Không thể gửi tệp sang Media Player'); bc && bc.close(); return; }
-  const p2 = waitAck(3000);
-  if (mpInstalled()) {
-    launchMPApp();
-    if (!(await p2) && document.visibilityState === 'visible') window.open(MP_URL + '?handoff=1', '_blank');   /* protocol chưa dùng được: mở tab thường */
-  } else if (!window.open(MP_URL + '?handoff=1', '_blank')) toast('Trình duyệt chặn cửa sổ mới. Hãy cho phép rồi thử lại');
+  /* Luôn thử mở app (protocol handler) trước; không ai trả lời thì mới mở tab thường.
+     Chưa đăng ký protocol thì Chrome không làm gì nên fallback chạy sau ~2 giây. */
+  const p2 = waitAck(mpInstalled() ? 3000 : 2000);
+  launchMPApp();
+  if (!(await p2) && document.visibilityState === 'visible') {
+    if (!window.open(MP_URL + '?handoff=1', '_blank')) toast('Trình duyệt chặn cửa sổ mới. Hãy cho phép rồi thử lại');
+  }
   bc && setTimeout(() => bc.close(), 4000);
 }
 $('#btnErrMP').onclick = () => { const f = S.files[S.idx]; if (f) openInMP([f]); };
