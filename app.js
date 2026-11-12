@@ -1504,36 +1504,51 @@ $('#fileInput').addEventListener('change', e => {
    1) Media Player đang mở: gửi handle qua BroadcastChannel, nó trả "ack" và thêm vào danh sách phát.
    2) Chưa mở: lưu handle vào IndexedDB 'media-handoff' rồi mở Media Player, nó tự đọc và thêm vào. */
 const MP_URL = new URL('../music-player/index.html', location.href).href;
-function mpSave(items) {
+function mpSave(id, items) {
   return new Promise((res, rej) => {
     const r = indexedDB.open('media-handoff', 1);
     r.onupgradeneeded = () => r.result.createObjectStore('queue', { autoIncrement: true });
     r.onerror = () => rej(r.error);
     r.onsuccess = () => {
       const db = r.result, t = db.transaction('queue', 'readwrite');
-      t.objectStore('queue').add({ t: Date.now(), items });
+      t.objectStore('queue').add({ id, t: Date.now(), items });
       t.oncomplete = () => { db.close(); res(); }; t.onerror = t.onabort = () => rej(t.error);
     };
   });
+}
+/* Mở / focus Media Player đã cài (PWA) qua protocol handler web+mediaplayer trong manifest của nó.
+   Media Player tự ghi cờ mp_pwa=1 (localStorage cùng origin) khi chạy ở chế độ ứng dụng. */
+const mpInstalled = () => { try { return localStorage.getItem('mp_pwa') === '1'; } catch (e) { return false; } };
+function launchMPApp() {
+  const a = document.createElement('a'); a.href = 'web+mediaplayer:open'; a.style.display = 'none';
+  document.body.appendChild(a); a.click(); a.remove();
 }
 async function openInMP(list) {
   const items = [];
   for (const f of list) { const h = f && (f.handle || f.file); if (h) items.push(h); }
   if (!items.length) { toast('Không có tệp để mở'); return; }
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  let acked = false;
-  try {
-    const bc = new BroadcastChannel('media-player-handoff');
-    acked = await new Promise(res => {
-      const t = setTimeout(() => res(false), 900);
-      bc.onmessage = e => { if (e.data && e.data.type === 'ack' && e.data.id === id) { clearTimeout(t); res(true); } };
-      try { bc.postMessage({ type: 'enqueue', id, handles: items }); } catch (err) { clearTimeout(t); res(false); }
-    });
-    bc.close();
-  } catch (e) { /* trình duyệt không hỗ trợ: dùng cách 2 */ }
-  if (acked) { toast(items.length > 1 ? `Đã gửi ${items.length} tệp sang Media Player` : 'Đã thêm vào danh sách phát của Media Player'); return; }
-  try { await mpSave(items); } catch (e) { toast('Không thể gửi tệp sang Media Player'); return; }
-  if (!window.open(MP_URL + '?handoff=1', '_blank')) toast('Trình duyệt chặn cửa sổ mới. Hãy cho phép rồi thử lại');
+  let bc = null;
+  try { bc = new BroadcastChannel('media-player-handoff'); } catch (e) { /* dùng cách 2 */ }
+  const waitAck = ms => new Promise(res => {
+    if (!bc) return res(false);
+    const t = setTimeout(() => res(false), ms);
+    bc.onmessage = e => { if (e.data && e.data.type === 'ack' && e.data.id === id) { clearTimeout(t); res(true); } };
+  });
+  const p1 = waitAck(900);
+  try { bc && bc.postMessage({ type: 'enqueue', id, handles: items }); } catch (e) { /* bỏ qua */ }
+  if (await p1) {
+    toast(items.length > 1 ? `Đã gửi ${items.length} tệp sang Media Player` : 'Đã thêm vào danh sách phát của Media Player');
+    if (mpInstalled()) launchMPApp();   /* đưa cửa sổ Media Player (đang mở) lên trước */
+    bc.close(); return;
+  }
+  try { await mpSave(id, items); } catch (e) { toast('Không thể gửi tệp sang Media Player'); bc && bc.close(); return; }
+  const p2 = waitAck(3000);
+  if (mpInstalled()) {
+    launchMPApp();
+    if (!(await p2) && document.visibilityState === 'visible') window.open(MP_URL + '?handoff=1', '_blank');   /* protocol chưa dùng được: mở tab thường */
+  } else if (!window.open(MP_URL + '?handoff=1', '_blank')) toast('Trình duyệt chặn cửa sổ mới. Hãy cho phép rồi thử lại');
+  bc && setTimeout(() => bc.close(), 4000);
 }
 $('#btnErrMP').onclick = () => { const f = S.files[S.idx]; if (f) openInMP([f]); };
 $('#btnOpenDirEmpty').onclick = pickDir;
