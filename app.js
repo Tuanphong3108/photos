@@ -1365,14 +1365,12 @@ async function openFromGallery(i, tile) {
       anim = fly.animate([{ ...px(r0), borderRadius: '16px' }, { ...px(box), borderRadius: '12px' }], { duration: 420, easing: 'cubic-bezier(.2,0,0,1)', fill: 'forwards' });
     }
     const p = openIndex(i, true);
-    await Promise.all([p, anim && anim.finished.catch(() => {})]);
+    /* Không đợi animation bay xong mới hiện ảnh thật: ảnh tải xong là hiện ngay, ảnh bay mờ dần phía trên. */
+    await p;
     if (fly) {
-      if (app.dataset.state === 'image' && S.iw) {
-        const r = rect(), st = stage.getBoundingClientRect();
-        const end = { left: st.left + r.x, top: st.top + r.y, width: r.w, height: r.h };
-        await fly.animate([{}, { ...px(end), borderRadius: '0px' }], { duration: 160, easing: 'cubic-bezier(.2,0,0,1)', fill: 'forwards' }).finished.catch(() => {});
-      }
-      await fly.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, fill: 'forwards' }).finished.catch(() => {});
+      const t = anim ? (anim.currentTime || 0) : 0;
+      if (t < 120) await new Promise(r => setTimeout(r, 120 - t));   /* cho ảnh bay một đoạn ngắn để vẫn thấy chuyển động */
+      await fly.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' }).finished.catch(() => {});
       fly.remove(); app.classList.remove('flying');
     }
   } finally { opening = false; app.classList.remove('flying'); }
