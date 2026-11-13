@@ -10,7 +10,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 /* ============================================================
    Biểu tượng: Material Symbols (font con, gọi bằng mã điểm)
    ============================================================ */
-const SYM = {"info":59534,"share":59405,"zoom_out":59648,"zoom_in":59647,"crop_rotate":58423,"resize":63239,"tune":58409,"draw":59206,"undo":57702,"redo":57690,"more_vert":58836,"arrow_drop_down":58821,"chevron_left":58376,"chevron_right":58377,"lock":59533,"lock_open":59544,"rotate_left":58393,"rotate_right":58394,"flip":58344,"ink_highlighter":59089,"ink_eraser":59088,"ink_pen":59091,"edit":57680,"broken_image":58285,"folder_open":58056,"image":57937,"check":58826,"close":57676,"photo_library":58387,"add_photo_alternate":58430,"print":58709,"save":57697,"content_paste":57679,"aspect_ratio":59483,"crop":58302,"restart_alt":61523,"document_scanner":58874,"palette":58295,"keyboard":58130,"help":59527,"description":59507,"open_in_new":59541,"save_as":60256,"file_open":60147,"delete":59506,"refresh":58837,"arrow_back":58820,"arrow_forward":58824,"colorize":58296,"menu_book":59929,"gif_box":59299,"text_fields":57954,"format_bold":57912,"format_italic":57919,"folder":58055,"create_new_folder":58060,"fullscreen":58832,"fullscreen_exit":58833,"content_copy":57677,"search":59574,"select_all":57698,"content_cut":57678,"check_circle":59500,"rocket_launch":60315,"play_arrow":57399,"drag_pan":63262,"offline_bolt":59698,"auto_awesome":58975,"touch_app":59667,"lightbulb":57584,"waving_hand":59238,"warning":57346,"videocam_off":57420};
+const SYM = {"info":59534,"share":59405,"zoom_out":59648,"zoom_in":59647,"crop_rotate":58423,"resize":63239,"tune":58409,"draw":59206,"undo":57702,"redo":57690,"more_vert":58836,"arrow_drop_down":58821,"chevron_left":58376,"chevron_right":58377,"lock":59533,"lock_open":59544,"rotate_left":58393,"rotate_right":58394,"flip":58344,"ink_highlighter":59089,"ink_eraser":59088,"ink_pen":59091,"edit":57680,"broken_image":58285,"folder_open":58056,"image":57937,"check":58826,"close":57676,"photo_library":58387,"add_photo_alternate":58430,"print":58709,"save":57697,"content_paste":57679,"aspect_ratio":59483,"crop":58302,"restart_alt":61523,"document_scanner":58874,"palette":58295,"keyboard":58130,"help":59527,"description":59507,"open_in_new":59541,"save_as":60256,"file_open":60147,"delete":59506,"refresh":58837,"arrow_back":58820,"arrow_forward":58824,"colorize":58296,"menu_book":59929,"gif_box":59299,"text_fields":57954,"format_bold":57912,"format_italic":57919,"folder":58055,"create_new_folder":58060,"fullscreen":58832,"fullscreen_exit":58833,"content_copy":57677,"search":59574,"select_all":57698,"content_cut":57678,"check_circle":59500,"rocket_launch":60315,"play_arrow":57399,"drag_pan":63262,"offline_bolt":59698,"auto_awesome":58975,"touch_app":59667,"lightbulb":57584,"waving_hand":59238,"warning":57346,"videocam_off":57420,"sort":57700};
 const sym = n => String.fromCodePoint(SYM[n]);
 const lineIcon = w => `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><line x1="6" y1="18" x2="18" y2="6" stroke="currentColor" stroke-width="${w}" stroke-linecap="round"/></svg>`;
 const paintIcons = (root = document) => $$('md-icon[data-i]', root).forEach(el => { el.textContent = sym(el.dataset.i); });
@@ -677,6 +677,7 @@ stage.addEventListener('dblclick', e => {
    ============================================================ */
 const IMG_EXT = /\.(png|jpe?g|jfif|webp|gif|bmp|avif|svg|ico|tiff?|heic|heif)$/i;
 const isImgName = n => IMG_EXT.test(n);
+const PASTED_NAME = I18N.lang === 'en' ? 'Pasted image.png' : 'Ảnh đã dán.png';
 const VID_EXT = /\.(mp4|m4v|webm|mkv|mov|ogv|3gp|avi)$/i;
 const isVidName = n => VID_EXT.test(n);
 const isImgFile = f => (f.type && f.type.startsWith('image/')) || isImgName(f.name);
@@ -694,7 +695,7 @@ const ERRORS = {
 function showError(code, name) {
   const [t, d] = ERRORS[code] || ERRORS.ERR_DECODE_FAILED;
   const vid = code === 'ERR_VIDEO';
-  $('#errTitle').textContent = t; $('#errText').textContent = name ? `${name}: ${d}` : d; $('#errCode').textContent = code;
+  $('#errTitle').textContent = t; $('#errText').textContent = name ? `${name}: ${I18N.tr(d)}` : d; $('#errCode').textContent = code;
   $('#error').classList.toggle('vid', vid);
   const bg = $('#errBg'); bg.style.backgroundImage = '';
   if (vid) { const f = S.files[S.idx]; if (f) thumbOf(f).then(r => { if (S.files[S.idx] === f && $('#error').classList.contains('vid')) bg.style.backgroundImage = `url(${r.url})`; }, () => {}); }
@@ -923,7 +924,11 @@ const idb = (() => {
   return { all: () => tx('readonly', s => s.getAll()), add: h => tx('readwrite', s => s.add({ handle: h })), del: id => tx('readwrite', s => s.delete(id)) };
 })();
 
-const GAL = { sel: new Set(), selecting: false, clip: null, tree: null, cur: null, dirs: [], items: [], shown: [], tab: 'all', path: [], q: '', ready: Promise.resolve(), tok: 0, dirty: false, scroll: 0, t: 0 };
+const GAL = { sort: loadSort(), sel: new Set(), selecting: false, clip: null, tree: null, cur: null, dirs: [], items: [], shown: [], tab: 'all', path: [], q: '', ready: Promise.resolve(), tok: 0, dirty: false, scroll: 0, t: 0 };
+function loadSort() {
+  const d = { all: 'modified', by: 'name', dir: 'asc' };
+  try { return { ...d, ...JSON.parse(localStorage.getItem('photos.sort')) }; } catch (e) { return d; }
+}
 const thumbs = new WeakMap();
 const SKIP_DIR = /^(\.|\$RECYCLE\.BIN$|System Volume Information$|node_modules$)/i;
 const gal = $('#gallery'), galGrid = $('#galGrid');
@@ -950,6 +955,44 @@ async function dirPerm(h, ask) {
     return p === 'granted';
   } catch (e) { return false; }
 }
+/* ---- Sắp xếp ----
+   Web không đọc được "ngày tạo" thật của tệp, nên "ngày tạo" = ngày chụp trong EXIF (JPEG) nếu có, không thì ngày sửa đổi. */
+const exifTime = s => { const m = typeof s === 'string' && /^(\d{4}):(\d\d):(\d\d)[ T](\d\d):(\d\d):(\d\d)/.exec(s); return m ? new Date(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime() : 0; };
+const dateKey = (it, by) => (by === 'created' ? (it.ctime || it.mtime) : it.mtime) || 0;
+function sortList(list, by, dir) {
+  const s = dir === 'desc' ? -1 : 1;
+  if (by === 'name') return list.sort((a, b) => s * natural(a, b));
+  return list.sort((a, b) => (dir === 'asc' ? 1 : -1) * (dateKey(a, by) - dateKey(b, by)) || natural(a, b));
+}
+let ctBusy = false;
+async function ensureCreated() {
+  if (ctBusy) return;
+  const todo = GAL.items.filter(it => it.ctime === undefined);
+  if (!todo.length) return;
+  ctBusy = true;
+  const tok = GAL.tok; let i = 0;
+  if (todo.length > 300) toast('Đang đọc ngày tạo của ảnh...');
+  try {
+    await Promise.all(Array.from({ length: 4 }, async () => {
+      while (i < todo.length) {
+        const it = todo[i++]; if (i % 100 === 0) await new Promise(r => setTimeout(r, 0));
+        try {
+          let d = 0;
+          if (/\.jpe?g$/i.test(it.name)) { const x = await readExif(await it.handle.getFile()); d = exifTime(x && x.date); }
+          it.ctime = d || it.mtime;
+        } catch (e) { it.ctime = it.mtime; }
+      }
+    }));
+  } finally { ctBusy = false; }
+  if (tok === GAL.tok && gal.contains(galGrid)) renderGallery();
+}
+function setSort(patch) {
+  Object.assign(GAL.sort, patch);
+  try { localStorage.setItem('photos.sort', JSON.stringify(GAL.sort)); } catch (e) { /* bỏ qua */ }
+  gal.scrollTop = 0; renderGallery();
+  const by = GAL.tab === 'files' ? GAL.sort.by : GAL.sort.all;
+  if (by === 'created') ensureCreated();
+}
 function galBusy(on) { $('#galLoad').hidden = !(on && !GAL.items.length); }
 function refreshGallery(ask) {
   const tok = ++GAL.tok;
@@ -965,6 +1008,7 @@ function refreshGallery(ask) {
     out.sort((a, b) => (b.mtime - a.mtime) || natural(a, b));
     GAL.items = out; GAL.t = Date.now(); GAL.dirty = false;
     galBusy(false); renderGallery();
+    if ((GAL.tab === 'files' ? GAL.sort.by : GAL.sort.all) === 'created') ensureCreated();
   })());
 }
 
@@ -1149,31 +1193,31 @@ function renderGallery() {
     });
     frag.appendChild(cr);
     if (match) {
-      shown = subtree(node).filter(match).sort(natural);
+      shown = sortList(subtree(node).filter(match), GAL.sort.by, GAL.sort.dir);
       if (shown.length) { head(`Kết quả trong “${node.name || 'Thư mục theo dõi'}” (${shown.length})`); addTiles(shown); }
       else msg = `Không tìm thấy ảnh nào khớp “${GAL.q.trim()}”.`;
     } else {
       if (node.kids.size) {
         head(node.virtual ? 'Thư mục theo dõi' : 'Thư mục');
         const fg = document.createElement('div'); fg.className = 'folderGrid';
-        [...node.kids.entries()].sort((a, b) => natural({ name: a[1].name }, { name: b[1].name })).forEach(([k, f]) => {
+        [...node.kids.entries()].sort((a, b) => (GAL.sort.by === 'name' && GAL.sort.dir === 'desc' ? -1 : 1) * natural({ name: a[1].name }, { name: b[1].name })).forEach(([k, f]) => {
           const b = document.createElement('button'); b.className = 'folder'; b.dataset.k = k;
           b.innerHTML = `<md-icon data-i="folder"></md-icon><span class="fn"><b>${esc(f.name)}</b><span>${f.count} ảnh</span></span>`;
           fg.appendChild(b);
         });
         frag.appendChild(fg);
       }
-      shown = node.imgs.slice().sort(natural);
+      shown = sortList(node.imgs.slice(), GAL.sort.by, GAL.sort.dir);
       if (shown.length) { if (node.kids.size) head('Ảnh'); addTiles(shown); }
       if (!node.kids.size && !shown.length && !empty) msg = 'Thư mục này không có ảnh.';
     }
   } else {
-    shown = match ? GAL.items.filter(match) : GAL.items;
+    shown = sortList(match ? GAL.items.filter(match) : GAL.items.slice(), GAL.sort.all, 'desc');
     if (match && !shown.length) msg = `Không tìm thấy ảnh nào khớp “${GAL.q.trim()}”.`;
-    const fmt = new Intl.DateTimeFormat('vi-VN', { month: 'long', year: 'numeric' });
+    const fmt = new Intl.DateTimeFormat(I18N.locale, { month: 'long', year: 'numeric' });
     let key = null;
     shown.forEach((it, i) => {
-      let k = match ? 'Kết quả (' + shown.length + ')' : it.mtime ? fmt.format(it.mtime) : 'Không rõ ngày';
+      let k = match ? 'Kết quả (' + shown.length + ')' : dateKey(it, GAL.sort.all) ? fmt.format(dateKey(it, GAL.sort.all)) : 'Không rõ ngày';
       k = k.charAt(0).toUpperCase() + k.slice(1);
       if (k !== key) { key = k; head(k); }
       addTiles([it], i);
@@ -1192,9 +1236,34 @@ $('#galTabs').addEventListener('change', e => {
   GAL.tab = e.target.activeTabIndex === 1 ? 'files' : 'all'; GAL.sel.clear(); GAL.selecting = false;
   try { localStorage.setItem('photos.galTab', GAL.tab); } catch (err) { /* bỏ qua */ }
   gal.scrollTop = 0; renderGallery();
+  if ((GAL.tab === 'files' ? GAL.sort.by : GAL.sort.all) === 'created') ensureCreated();
 });
 let searchT;
 $('#galSearch').addEventListener('input', e => { GAL.q = e.target.value; clearTimeout(searchT); searchT = setTimeout(() => { gal.scrollTop = 0; renderGallery(); }, 120); });
+/* ---- Nút Sắp xếp ---- */
+const sortMenu = $('#sortMenu');
+function buildSortMenu() {
+  const files = GAL.tab === 'files', S0 = GAL.sort, cur = files ? S0.by : S0.all, items = [];
+  const mi = (label, on, fn) => ({ label, on, fn });
+  if (files) items.push(mi('A - Z', cur === 'name', () => setSort({ by: 'name', dir: 'asc' })));
+  items.push(mi('Theo ngày tạo', cur === 'created', () => files ? setSort({ by: 'created', dir: S0.by === 'name' ? 'desc' : S0.dir }) : setSort({ all: 'created' })));
+  items.push(mi('Theo ngày sửa', cur === 'modified', () => files ? setSort({ by: 'modified', dir: S0.by === 'name' ? 'desc' : S0.dir }) : setSort({ all: 'modified' })));
+  if (files) {
+    items.push('sep');
+    if (S0.by === 'name') items.push(mi('Từ A - Z', S0.dir === 'asc', () => setSort({ dir: 'asc' })), mi('Từ Z - A', S0.dir === 'desc', () => setSort({ dir: 'desc' })));
+    else items.push(mi('Từ gần đây nhất', S0.dir === 'desc', () => setSort({ dir: 'desc' })), mi('Từ lâu nhất', S0.dir === 'asc', () => setSort({ dir: 'asc' })));
+  }
+  sortMenu.textContent = '';
+  items.forEach(i => {
+    if (i === 'sep') { const d = document.createElement('md-divider'); d.setAttribute('role', 'separator'); sortMenu.appendChild(d); return; }
+    const m = document.createElement('md-menu-item');
+    m.innerHTML = `${i.on ? '<md-icon slot="start" data-i="check"></md-icon>' : '<span slot="start" class="ctxgap"></span>'}<div slot="headline">${esc(i.label)}</div>`;
+    m.addEventListener('click', () => setTimeout(i.fn, 0));
+    sortMenu.appendChild(m);
+  });
+  paintIcons(sortMenu);
+}
+$('#btnSort').onclick = () => { buildSortMenu(); sortMenu.open = !sortMenu.open; };
 $('#galClear').onclick = () => { $('#galSearch').value = ''; GAL.q = ''; renderGallery(); $('#galSearch').focus(); };
 
 
@@ -1300,7 +1369,7 @@ async function infoItemDialog(it) {
   let file = null, dims = '';
   try { file = await it.handle.getFile(); const bm = await createImageBitmap(file); dims = `${bm.width} × ${bm.height} px`; bm.close(); } catch (e) { /* bỏ qua */ }
   const rows = [['Tên', it.name], ['Thư mục', [it.root && it.root.name, ...(it.path || []).slice(0, -1)].filter(Boolean).join(' / ')],
-    ['Loại', file && (file.type || '')], ['Dung lượng', file && fmtSize(file.size)], ['Ngày sửa đổi', file && file.lastModified ? new Date(file.lastModified).toLocaleString('vi-VN') : ''], ['Kích thước', dims]]
+    ['Loại', file && (file.type || '')], ['Dung lượng', file && fmtSize(file.size)], ['Ngày sửa đổi', file && file.lastModified ? new Date(file.lastModified).toLocaleString(I18N.locale) : ''], ['Kích thước', dims]]
     .filter(r => r[1]);
   dialog('Thông tin ảnh', `<dl class="kv">${rows.map(r => `<dt>${r[0]}</dt><dd>${esc(String(r[1]))}</dd>`).join('')}</dl>`, [{ label: 'Đóng', value: 'ok' }]);
 }
@@ -1321,7 +1390,7 @@ function dateBubble() {
   const tiles = $$('.tile', galGrid); if (!tiles.length) { gbub.classList.remove('has'); return; }
   const top = gal.scrollTop + 64; let lo = 0, hi = tiles.length - 1;
   while (lo < hi) { const mid = (lo + hi) >> 1; if (tiles[mid].offsetTop + tiles[mid].offsetHeight > top) hi = mid; else lo = mid + 1; }
-  const it = GAL.shown[+tiles[lo].dataset.i], d = it && it.mtime ? new Date(it.mtime) : null;
+  const it = GAL.shown[+tiles[lo].dataset.i], d = it && dateKey(it, GAL.tab === 'files' ? GAL.sort.by : GAL.sort.all) ? new Date(dateKey(it, GAL.tab === 'files' ? GAL.sort.by : GAL.sort.all)) : null;
   gbub.textContent = d ? `Tháng ${d.getMonth() + 1} năm ${d.getFullYear()}` : 'Không rõ ngày';
   gbub.classList.add('has');
 }
@@ -1365,13 +1434,17 @@ async function openFromGallery(i, tile) {
       anim = fly.animate([{ ...px(r0), borderRadius: '16px' }, { ...px(box), borderRadius: '12px' }], { duration: 420, easing: 'cubic-bezier(.2,0,0,1)', fill: 'forwards' });
     }
     const p = openIndex(i, true);
-    /* Không đợi animation bay xong mới hiện ảnh thật: ảnh tải xong là hiện ngay, ảnh bay mờ dần phía trên. */
-    await p;
+    /* Ảnh thật bị giấu (CSS .flying) cho tới khi animation chạy xong: bay + phóng to, rồi co về đúng kích thước/vị trí, sau đó mới hiện ảnh thật */
+    await Promise.all([p, anim && anim.finished.catch(() => {})]);
     if (fly) {
-      const t = anim ? (anim.currentTime || 0) : 0;
-      if (t < 120) await new Promise(r => setTimeout(r, 120 - t));   /* cho ảnh bay một đoạn ngắn để vẫn thấy chuyển động */
-      await fly.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' }).finished.catch(() => {});
-      fly.remove(); app.classList.remove('flying');
+      if (app.dataset.state === 'image' && S.iw) {
+        const r = rect(), st = stage.getBoundingClientRect();
+        const end = { left: st.left + r.x, top: st.top + r.y, width: r.w, height: r.h };
+        await fly.animate([{}, { ...px(end), borderRadius: '0px' }], { duration: 160, easing: 'cubic-bezier(.2,0,0,1)', fill: 'forwards' }).finished.catch(() => {});
+      }
+      app.classList.remove('flying');   /* hiện ảnh thật ngay dưới ảnh bay, rồi cho ảnh bay mờ đi */
+      await fly.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, fill: 'forwards' }).finished.catch(() => {});
+      fly.remove();
     }
   } finally { opening = false; app.classList.remove('flying'); }
 }
@@ -1506,10 +1579,12 @@ function closeGettingStarted() {
 window.addEventListener('message', async e => {
   if (e.source !== gsFrame.contentWindow || !e.data || typeof e.data !== 'object') return;
   if (e.data.type !== 'gs-done') return;
+  const langChanged = e.data.lang && e.data.lang !== I18N.lang;
   gsStore.set('photos.gsDone', '1'); gsStore.del('photos.gsPending');
   closeGettingStarted();
   let added = false;
   for (const h of e.data.dirs || []) { try { if (await addDirHandle(h) === 'added') added = true; } catch (err) { /* bỏ qua */ } }
+  if (langChanged) { I18N.set(e.data.lang); location.reload(); return; }
   if (added) { if (app.dataset.state !== 'gallery') toGallery(); refreshGallery(); }
 });
 GAL.ready.then(() => {
@@ -1601,7 +1676,7 @@ window.addEventListener('paste', async e => {
   const f = [...(e.clipboardData?.files || [])].find(x => x.type.startsWith('image/'));
   if (!f) return;
   if (S.H.length && !(await confirmDiscard())) return;
-  S.H = []; openList([{ file: new File([f], f.name && f.name !== 'image.png' ? f.name : 'Ảnh đã dán.png', { type: f.type }), name: f.name && f.name !== 'image.png' ? f.name : 'Ảnh đã dán.png' }]);
+  S.H = []; openList([{ file: new File([f], f.name && f.name !== 'image.png' ? f.name : PASTED_NAME, { type: f.type }), name: f.name && f.name !== 'image.png' ? f.name : PASTED_NAME }]);
 });
 /* Mở bằng ứng dụng (PWA file handler: "Mở bằng Photos" trong Tệp / chuột phải) */
 if ('launchQueue' in window) {
@@ -1667,7 +1742,7 @@ async function updateInfo() {
     let raw = f.file; try { raw = raw || (f.handle && await f.handle.getFile()); } catch (e) { /* bỏ qua */ }
     if (!raw || S.files[S.idx] !== f) return;
     const g = document.createElement('div'); g.className = 'grp'; g.textContent = 'Tệp'; dl.appendChild(g);
-    [['Tên', f.name], ['Loại', raw.type || (/\.([a-z0-9]+)$/i.exec(f.name) || [])[1]?.toUpperCase()], ['Dung lượng', fmtSize(raw.size)], ['Ngày sửa đổi', raw.lastModified ? new Date(raw.lastModified).toLocaleString('vi-VN') : ''], ['Tình trạng', 'Không thể đọc nội dung ảnh']]
+    [['Tên', f.name], ['Loại', raw.type || (/\.([a-z0-9]+)$/i.exec(f.name) || [])[1]?.toUpperCase()], ['Dung lượng', fmtSize(raw.size)], ['Ngày sửa đổi', raw.lastModified ? new Date(raw.lastModified).toLocaleString(I18N.locale) : ''], ['Tình trạng', 'Không thể đọc nội dung ảnh']]
       .forEach(([t, v]) => { if (!v) return; const x = document.createElement('dt'), y = document.createElement('dd'); x.textContent = t; y.textContent = v; dl.append(x, y); });
     return;
   }
@@ -1679,7 +1754,7 @@ async function updateInfo() {
   row('Tên', f.name);
   row('Loại', file.type || (/\.([a-z0-9]+)$/i.exec(f.name) || [])[1]?.toUpperCase());
   row('Dung lượng', fmtSize(file.size));
-  row('Ngày sửa đổi', file.lastModified ? new Date(file.lastModified).toLocaleString('vi-VN') : '');
+  row('Ngày sửa đổi', file.lastModified ? new Date(file.lastModified).toLocaleString(I18N.locale) : '');
   row('Kích thước', `${S.iw} × ${S.ih} px`);
   const x = S.exif;
   if (x) {
@@ -1858,12 +1933,17 @@ const HELP_HTML = `
 </ul>`;
 $('#miHelp').onclick = async () => {
   closeMenus();
-  const r = await dialog('Mở và chỉnh sửa ảnh', HELP_HTML, [{ label: 'Xem bài gốc của Google', value: 'web' }, { label: 'Đóng', value: 'ok' }]);
+  const r = await dialog('Mở và chỉnh sửa ảnh', I18N.lang === 'en' ? I18N.HELP_EN : HELP_HTML, [{ label: 'Xem bài gốc của Google', value: 'web' }, { label: 'Đóng', value: 'ok' }]);
   if (r === 'web') window.open(HELP_URL, '_blank', 'noopener,noreferrer');
+};
+$('#miLang').onclick = async () => {
+  closeMenus();
+  const r = await dialog('Ngôn ngữ / Language', '<p>Chọn ngôn ngữ giao diện của Photos.<br>Choose the language of Photos.</p>', [{ label: 'Tiếng Việt', value: 'vi' }, { label: 'English', value: 'en' }]);
+  if (r && r !== I18N.lang) { I18N.set(r); location.reload(); }
 };
 $('#miLicense').onclick = () => {
   closeMenus();
-  dialog('Giấy phép', '<pre>Photos — Giấy phép MIT\n© 2026 Phong VN\n\nThành phần bên thứ ba:\n• Material Web Components (@material/web) — Giấy phép Apache 2.0\n• Material Symbols — Giấy phép Apache 2.0\n• Google Sans Flex, Roboto, Open Sans, Montserrat, Lora, Playfair Display, Roboto Mono, Dancing Script — SIL Open Font License 1.1</pre>', [{ label: 'Đóng', value: 'ok' }]);
+  dialog('Giấy phép', I18N.lang === 'en' ? I18N.LICENSE_EN : '<pre>Photos — Giấy phép MIT\n© 2026 Phong VN\n\nThành phần bên thứ ba:\n• Material Web Components (@material/web) — Giấy phép Apache 2.0\n• Material Symbols — Giấy phép Apache 2.0\n• Google Sans Flex, Roboto, Open Sans, Montserrat, Lora, Playfair Display, Roboto Mono, Dancing Script — SIL Open Font License 1.1</pre>', [{ label: 'Đóng', value: 'ok' }]);
 };
 function dialog(title, body, actions) {
   return new Promise(res => {
@@ -2051,10 +2131,42 @@ function ctxItems(e) {
   }
   return [it('', 'Mở ảnh...', pickFiles), it('folder_open', 'Mở thư mục...', pickDir), 'sep', it(isFs() ? 'fullscreen_exit' : 'fullscreen', isFs() ? 'Thoát toàn màn hình' : 'Toàn màn hình', toggleFs)];
 }
+/* ---- Menu chuột phải cho ô nhập chữ: Cắt / Sao chép / Dán / Chọn tất cả ---- */
+function editableOf(e) {
+  const t = (e.composedPath && e.composedPath()[0]) || e.target;
+  if (!t || !t.closest) return null;
+  if (t.closest('#textBox')) return textBox;
+  if (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && !/^(range|checkbox|radio|button|color|file|submit)$/.test(t.type))) return t;
+  return null;
+}
+function editItems(el) {
+  const isInp = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA', ro = isInp && (el.readOnly || el.disabled);
+  const sr = !isInp && getSelection().rangeCount ? getSelection().getRangeAt(0).cloneRange() : null;   /* nhớ vùng chọn trong contenteditable */
+  const hasSel = isInp ? el.selectionStart !== el.selectionEnd : !!sr && !sr.collapsed;
+  const back = () => { el.focus(); if (sr) { const s = getSelection(); s.removeAllRanges(); s.addRange(sr); } };
+  const it = (icon, label, fn, off) => ({ icon, label, fn, off });
+  return [
+    it('content_cut', 'Cắt', () => { back(); document.execCommand('cut'); }, !hasSel || ro),
+    it('content_copy', 'Sao chép', () => { back(); document.execCommand('copy'); }, !hasSel),
+    it('content_paste', 'Dán', async () => {
+      try {
+        const tx = await navigator.clipboard.readText(); back();
+        if (isInp) { el.setRangeText(tx, el.selectionStart, el.selectionEnd, 'end'); el.dispatchEvent(new Event('input', { bubbles: true })); }
+        else document.execCommand('insertText', false, tx);
+      } catch (err) { toast('Không thể dán từ bộ nhớ tạm'); }
+    }, ro),
+    'sep',
+    it('select_all', 'Chọn tất cả', () => { back(); if (isInp) el.select(); else document.execCommand('selectAll'); })
+  ];
+}
 window.addEventListener('contextmenu', e => {
   e.preventDefault();
-  if ($('#dlg').open || S.tool === 'draw' || e.target.closest('#textBox')) return;
-  const items = ctxItems(e);
+  const ed = editableOf(e);
+  if (!ed && ($('#dlg').open || S.tool === 'draw')) return;
+  /* Đưa menu vào đúng lớp: dialog modal làm mọi thứ bên ngoài bị vô hiệu, nên menu phải nằm trong dialog khi nó đang mở */
+  const host = $('#dlg').open ? $('#dlgBody') : document.body;
+  if (cm.parentNode !== host) { host.appendChild(ctxAnchor); host.appendChild(cm); }
+  const items = ed ? editItems(ed) : ctxItems(e);
   cm.open = false; cm.textContent = '';
   items.forEach(i => {
     if (i === 'sep') { const d = document.createElement('md-divider'); d.setAttribute('role', 'separator'); cm.appendChild(d); return; }

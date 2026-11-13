@@ -564,6 +564,7 @@ img, picture, svg, canvas { -webkit-user-drag: none; user-select: none; -webkit-
 #app[data-state="gallery"] #gallery { animation: galIn .45s var(--spring) both; }
 #app.flying:not([data-state="gallery"]) #gallery { opacity: 0; pointer-events: none; transition: opacity .3s var(--emph); }
 #app.flying #loading { display: none; }
+#app.flying #view, #app.flying .nav { visibility: hidden; }
 @keyframes galIn { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
 #galGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 6px; }
 .galHead { grid-column: 1 / -1; margin: 20px 8px 8px; font-size: 14px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); }
@@ -618,8 +619,11 @@ img, picture, svg, canvas { -webkit-user-drag: none; user-select: none; -webkit-
 /* ---- Thanh tìm kiếm + tab thư viện ---- */
 #galBar {
   position: sticky; top: -4px; z-index: 4; margin: 0 -16px; padding: 8px 16px 4px; background: var(--stage-bg);
-  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px;
+  display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 8px 16px;
 }
+#galTabs { margin-right: auto; }
+.sortWrap { position: relative; }
+#btnSort { --md-text-button-label-text-color: var(--md-sys-color-on-surface-variant); --md-text-button-icon-color: var(--md-sys-color-on-surface-variant); }
 #galBar[hidden] { display: none; }
 #galTabs { --md-primary-tab-container-color: transparent; --md-divider-color: transparent; background: transparent; }
 #galSearch {

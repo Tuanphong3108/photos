@@ -14,6 +14,7 @@
 <link rel="preload" href="fonts/symbols-subset.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/gsf-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
+<script src="i18n.js"></script>
 <script type="module" src="vendor/mwc.js"></script>
 <script type="module" src="app.js"></script>
 </head>
@@ -88,6 +89,7 @@
           <md-menu-item id="miManageDirs"><div slot="headline">Quản lý thư mục ảnh</div></md-menu-item>
           <md-menu-item id="miGettingStarted"><div slot="headline">Hướng dẫn bắt đầu</div></md-menu-item>
           <md-menu-item id="miHelp"><div slot="headline">Trợ giúp</div></md-menu-item>
+          <md-menu-item id="miLang"><div slot="headline">Ngôn ngữ / Language</div></md-menu-item>
           <md-menu-item id="miLicense"><div slot="headline">Giấy phép</div></md-menu-item>
         </md-menu>
       </span>
@@ -103,6 +105,10 @@
           <md-primary-tab id="tabAll">Tất cả ảnh</md-primary-tab>
           <md-primary-tab id="tabFiles">Files UI</md-primary-tab>
         </md-tabs>
+        <div class="sortWrap">
+          <md-text-button id="btnSort" aria-label="Sắp xếp"><md-icon slot="icon" data-i="sort"></md-icon>Sắp xếp</md-text-button>
+          <md-menu id="sortMenu" anchor="btnSort" positioning="fixed" anchor-corner="end-end" menu-corner="start-end"></md-menu>
+        </div>
         <md-outlined-text-field id="galSearch" placeholder="Tìm theo tên hoặc ngày (vd: 4/2026)" aria-label="Tìm ảnh theo tên hoặc ngày" autocomplete="off" spellcheck="false">
           <md-icon slot="leading-icon" data-i="search"></md-icon>
           <md-icon-button slot="trailing-icon" id="galClear" hidden aria-label="Xóa tìm kiếm"><md-icon data-i="close"></md-icon></md-icon-button>
