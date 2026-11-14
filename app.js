@@ -1549,7 +1549,12 @@ async function adoptLaunch(first, list) {
     const it = GAL.items[i];
     if (it.name === first.name) { try { if (await it.handle.isSameEntry(first.handle)) idx = i; } catch (e) { /* bỏ qua */ } }
   }
-  if (idx >= 0 && S.files.length === list.length && S.files[S.idx] === first) { S.files = GAL.items; S.idx = idx; updateUI(); }
+  if (idx >= 0 && S.files.length === list.length && S.files[S.idx] === first) {
+    /* item thư viện chưa có .file (chỉ gán khi openIndex) → chuyển sang, không thì bảng Thông tin trống */
+    const g = GAL.items[idx];
+    if (first.file && !g.file) g.file = first.file;
+    S.files = GAL.items; S.idx = idx; updateUI(); updateInfo();
+  }
 }
 GAL.ready = (async () => {
   try { GAL.dirs = (await idb.all()).map(r => ({ id: r.id, handle: r.handle, ok: null })); } catch (e) { GAL.dirs = []; }
